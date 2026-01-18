@@ -1,0 +1,116 @@
+/* Global CSS reset + variables */
+:root {
+	/* Color palette */
+	--color-bg: #f7f9fc;
+	--color-surface: #ffffff;
+	--color-primary: #0b76ff;
+	--color-primary-600: #095fca;
+	--color-muted: #6b7280;
+	--color-border: #e6e9ef;
+	--color-success: #16a34a;
+	--color-danger: #ef4444;
+
+	/* Typography */
+	--font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+	--font-mono: SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+
+	/* Layout */
+	--radius-sm: 6px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--shadow-sm: 0 1px 2px rgba(16,24,40,0.04);
+	--shadow-md: 0 4px 12px rgba(16,24,40,0.08);
+}
+
+/* Box sizing and core reset */
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
+/* Remove default margins */
+* {
+	margin: 0;
+	padding: 0;
+}
+
+html, body, #root {
+	height: 100%;
+}
+
+html {
+	line-height: 1.5;
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	font-family: var(--font-sans);
+	background-color: var(--color-bg);
+	color: #0f172a;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+}
+
+/* Make images and media responsive */
+img, picture, video, canvas, svg {
+	max-width: 100%;
+	display: block;
+}
+
+/* Typography defaults */
+h1, h2, h3, h4, h5, h6 {
+	font-weight: 600;
+	color: inherit;
+}
+
+p {
+	color: var(--color-muted);
+}
+
+/* Forms */
+input, button, textarea, select {
+	font: inherit;
+}
+
+button {
+	background: transparent;
+	border: none;
+}
+
+/* Links */
+a {
+	color: var(--color-primary);
+	text-decoration: none;
+}
+
+a:hover {
+	color: var(--color-primary-600);
+}
+
+/* Utility helpers */
+.container {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 0 16px;
+}
+
+.card {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-sm);
+	padding: 16px;
+}
+
+/* Accessibility focus styles */
+:focus {
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	box-shadow: 0 0 0 3px rgba(11,118,255,0.12);
+}
+
+/* Small responsive tweaks */
+@media (max-width: 640px) {
+	.container { padding: 0 12px; }
+}
+
