@@ -39,21 +39,43 @@ const AUTH_ENDPOINTS = {
  */
 export const login = async (credentials: LoginRequest): Promise<AuthResponse> => {
   try {
-    const response = await httpClient.post<AuthResponse>(
+    const response = await httpClient.post(
       AUTH_ENDPOINTS.LOGIN,
       credentials
     );
-    
-    // Store token in localStorage if login is successful
-    if (response.data.success && response.data.data?.token) {
-      localStorage.setItem('authToken', response.data.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.data.user));
+    const payload: any = response.data ?? {};
+
+    const normalized: AuthResponse = {
+      success: Boolean(payload.success),
+      message: payload.message || (payload.success ? 'Login successful' : 'Login failed'),
+      data: payload.data,
+    };
+
+    // Backend currently returns { success, token, user, expires_at }
+    if (!normalized.data && payload.token && payload.user) {
+      normalized.data = {
+        token: payload.token,
+        user: {
+          id: payload.user.id,
+          email: payload.user.email,
+          name: payload.user.name || 'User',
+          role: payload.user.role || 'user',
+        },
+      };
     }
-    
-    return response.data;
+
+    if (normalized.success && normalized.data?.token) {
+      localStorage.setItem('authToken', normalized.data.token);
+      localStorage.setItem('user', JSON.stringify(normalized.data.user));
+    }
+
+    return normalized;
   } catch (error) {
     console.error('Login failed:', error);
-    throw error;
+    return {
+      success: false,
+      message: 'Unable to login. Please verify API URL and credentials.',
+    };
   }
 };
 
@@ -63,21 +85,29 @@ export const login = async (credentials: LoginRequest): Promise<AuthResponse> =>
  */
 export const logout = async (): Promise<LogoutResponse> => {
   try {
-    const response = await httpClient.post<LogoutResponse>(
+    const response = await httpClient.post(
       AUTH_ENDPOINTS.LOGOUT
     );
-    
+
     // Clear stored auth data
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    
-    return response.data;
+
+    return {
+      success: Boolean(response.data?.success ?? true),
+      message: response.data?.message || 'Logged out',
+    };
   } catch (error) {
     console.error('Logout failed:', error);
-    // Clear local storage even if the API call fails
+
+    // Clear local storage even when API call fails
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    throw error;
+
+    return {
+      success: true,
+      message: 'Logged out locally',
+    };
   }
 };
 
@@ -87,23 +117,37 @@ export const logout = async (): Promise<LogoutResponse> => {
  */
 export const refreshToken = async (): Promise<AuthResponse> => {
   try {
-    const response = await httpClient.post<AuthResponse>(
+    const response = await httpClient.post(
       AUTH_ENDPOINTS.REFRESH
     );
-    
+
+    const payload: any = response.data ?? {};
+    const normalized: AuthResponse = {
+      success: Boolean(payload.success),
+      message: payload.message || 'Token refreshed',
+      data: payload.data,
+    };
+
     // Update token if refresh is successful
-    if (response.data.success && response.data.data?.token) {
-      localStorage.setItem('authToken', response.data.data.token);
+    if (normalized.success && normalized.data?.token) {
+      localStorage.setItem('authToken', normalized.data.token);
     }
-    
-    return response.data;
+
+    return normalized;
   } catch (error) {
     console.error('Token refresh failed:', error);
-    // Clear auth data on refresh failure
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    throw error;
+
+    // Endpoint is not yet available; keep user session unchanged.
+    return {
+      success: false,
+      message: 'Refresh endpoint is unavailable',
+    };
   }
+};
+
+export const clearSession = (): void => {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('user');
 };
 
 /**
@@ -111,8 +155,14 @@ export const refreshToken = async (): Promise<AuthResponse> => {
  * @returns User object or null
  */
 export const getStoredUser = () => {
-  const user = localStorage.getItem('user');
-  return user ? JSON.parse(user) : null;
+  try {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+  } catch {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    return null;
+  }
 };
 
 /**

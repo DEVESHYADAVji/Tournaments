@@ -10,7 +10,8 @@ const Admin = lazy(() => import('../pages/Admin'));
 
 // Loading fallback component
 const LoadingFallback: React.FC = () => (
-  <div style={{ padding: '20px', textAlign: 'center' }}>
+  <div className="loading-view">
+    <div className="spinner" aria-hidden="true" />
     <p>Loading...</p>
   </div>
 );
