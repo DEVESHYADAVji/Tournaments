@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { isAdmin } from '../features/auth/auth.api';
 
 // Lazy load page components
 const Home = lazy(() => import('../pages/Home'));
@@ -16,6 +17,10 @@ const LoadingFallback: React.FC = () => (
   </div>
 );
 
+const AdminRoute: React.FC = () => {
+  return isAdmin() ? <Admin /> : <Navigate to="/" replace />;
+};
+
 const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingFallback />}>
@@ -24,7 +29,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/tournaments" element={<Tournaments />} />
         <Route path="/tournaments/:id" element={<TournamentDetails />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin" element={<AdminRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

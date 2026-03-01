@@ -15,8 +15,22 @@ httpClient.interceptors.request.use(
   (config) => {
     // Add auth token from localStorage if available
     const token = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('user');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user?.id) {
+          config.headers['X-User-Id'] = String(user.id);
+        }
+        if (user?.role) {
+          config.headers['X-User-Role'] = String(user.role).toLowerCase();
+        }
+      } catch {
+        // Ignore malformed user payload in storage.
+      }
     }
     
     console.log('Request:', config.method?.toUpperCase(), config.url);

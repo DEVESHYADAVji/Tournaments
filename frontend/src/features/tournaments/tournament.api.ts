@@ -1,81 +1,215 @@
 import httpClient from '../../services/http';
 
-// Tournament types
 export interface Tournament {
-	id: number;
-	name: string;
-	date: string;
-	location?: string;
-	description?: string;
-	organizer?: string;
+  id: number;
+  name: string;
+  game: string;
+  format: string;
+  status: 'registration_open' | 'upcoming' | 'live' | 'completed' | string;
+  location?: string | null;
+  description?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  prize_pool: number;
+  max_teams: number;
+  participants_count: number;
+  matches_count: number;
+  is_registered: boolean;
+  created_at?: string;
 }
 
-// Mock fallback data used when API isn't available
-const mockTournaments: Tournament[] = [
-	{ id: 1, name: 'Chess Championship', date: '2026-03-12', location: 'New York', description: 'A national-level chess tournament.', organizer: 'NY Chess Club' },
-	{ id: 2, name: 'Coding Challenge', date: '2026-04-05', location: 'Online', description: 'Algorithm and speed coding contest.', organizer: 'Dev League' },
-	{ id: 3, name: 'Gaming League', date: '2026-05-20', location: 'Los Angeles', description: 'Esports tournament with multiple games.', organizer: 'ProGamers' },
-	{ id: 4, name: 'Table Tennis Cup', date: '2026-06-15', location: 'Chicago', description: 'Open table tennis competition.', organizer: 'Chicago Sports' },
+export interface TournamentCreateInput {
+  name: string;
+  game: string;
+  format: string;
+  status: 'registration_open' | 'upcoming' | 'live' | 'completed';
+  location?: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+  prize_pool: number;
+  max_teams: number;
+}
+
+export interface Registration {
+  id: number;
+  tournament_id: number;
+  user_id: number;
+  team_name: string;
+  status: string;
+  points: number;
+  created_at: string;
+}
+
+export interface Match {
+  id: number;
+  tournament_id: number;
+  round_name: string;
+  team_a: string;
+  team_b: string;
+  scheduled_at?: string | null;
+  team_a_score?: number | null;
+  team_b_score?: number | null;
+  winner?: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface MatchCreateInput {
+  round_name: string;
+  team_a: string;
+  team_b: string;
+  scheduled_at?: string;
+}
+
+export interface MatchResultInput {
+  team_a_score: number;
+  team_b_score: number;
+  winner?: string;
+}
+
+export interface StandingRow {
+  rank: number;
+  user_id: number;
+  team_name: string;
+  points: number;
+  status: string;
+}
+
+export interface Announcement {
+  id: number;
+  tournament_id: number;
+  title: string;
+  content: string;
+  created_at: string;
+}
+
+export interface AnnouncementCreateInput {
+  title: string;
+  content: string;
+}
+
+export interface MyRegistration {
+  registration_id: number;
+  tournament_id: number;
+  tournament_name: string;
+  game: string;
+  status: string;
+  team_name: string;
+  points: number;
+  start_date?: string | null;
+}
+
+const fallbackTournaments: Tournament[] = [
+  {
+    id: 1,
+    name: 'Valor Clash Invitational',
+    game: 'Valorant',
+    format: 'Double Elimination',
+    status: 'registration_open',
+    location: 'Online',
+    description: 'Regional invitational with live streams and playoffs.',
+    start_date: '2026-03-12T18:00:00Z',
+    end_date: '2026-03-15T20:00:00Z',
+    prize_pool: 25000,
+    max_teams: 16,
+    participants_count: 0,
+    matches_count: 0,
+    is_registered: false,
+  },
 ];
 
-/**
- * Get all tournaments
- * Attempts to call the API at GET /tournaments, normalizes common response shapes,
- * and falls back to mock data on error.
- */
 export const getAllTournaments = async (): Promise<Tournament[]> => {
-	try {
-		const response = await httpClient.get('/tournaments');
-
-		// Normalize response shapes: either array, or { data: [...] }, or { success, data }
-		const respData: any = response.data;
-
-		if (Array.isArray(respData)) {
-			return respData as Tournament[];
-		}
-
-		if (respData && Array.isArray(respData.data)) {
-			return respData.data as Tournament[];
-		}
-
-		// Unexpected shape -> return mock
-		return mockTournaments;
-	} catch (error) {
-		console.error('getAllTournaments failed, returning mock data', error);
-		return mockTournaments;
-	}
+  try {
+    const response = await httpClient.get('/tournaments');
+    if (Array.isArray(response.data)) {
+      return response.data as Tournament[];
+    }
+    return fallbackTournaments;
+  } catch (error) {
+    console.error('getAllTournaments failed, returning fallback data', error);
+    return fallbackTournaments;
+  }
 };
 
-/**
- * Get a single tournament by id
- * Attempts to call GET /tournaments/:id and falls back to mock data if necessary.
- */
 export const getTournamentById = async (id: number | string): Promise<Tournament | null> => {
-	const numericId = Number(id);
-	try {
-		const response = await httpClient.get(`/tournaments/${numericId}`);
-		const respData: any = response.data;
-
-		// Response might be the tournament object directly or { data: tournament }
-		if (respData && respData.id) {
-			return respData as Tournament;
-		}
-
-		if (respData && respData.data && respData.data.id) {
-			return respData.data as Tournament;
-		}
-
-		// Not found shape
-		return null;
-	} catch (error) {
-		console.error(`getTournamentById(${numericId}) failed, using mock fallback`, error);
-		const found = mockTournaments.find((t) => t.id === numericId) || null;
-		return found;
-	}
+  const numericId = Number(id);
+  if (!Number.isFinite(numericId)) {
+    return null;
+  }
+  try {
+    const response = await httpClient.get(`/tournaments/${numericId}`);
+    return response.data as Tournament;
+  } catch (error) {
+    console.error(`getTournamentById(${numericId}) failed`, error);
+    return null;
+  }
 };
 
-export default {
-	getAllTournaments,
-	getTournamentById,
+export const createTournament = async (payload: TournamentCreateInput): Promise<Tournament> => {
+  const response = await httpClient.post('/tournaments', payload);
+  return response.data as Tournament;
 };
 
+export const joinTournament = async (
+  tournamentId: number | string,
+  teamName?: string
+): Promise<{ success: boolean; message: string; registration: Registration }> => {
+  const response = await httpClient.post(`/tournaments/${Number(tournamentId)}/join`, {
+    team_name: teamName || undefined,
+  });
+  return response.data;
+};
+
+export const getTournamentParticipants = async (tournamentId: number | string): Promise<Registration[]> => {
+  const response = await httpClient.get(`/tournaments/${Number(tournamentId)}/participants`);
+  return response.data as Registration[];
+};
+
+export const getTournamentMatches = async (tournamentId: number | string): Promise<Match[]> => {
+  const response = await httpClient.get(`/tournaments/${Number(tournamentId)}/matches`);
+  return response.data as Match[];
+};
+
+export const createTournamentMatch = async (
+  tournamentId: number | string,
+  payload: MatchCreateInput
+): Promise<Match> => {
+  const response = await httpClient.post(`/tournaments/${Number(tournamentId)}/matches`, payload);
+  return response.data as Match;
+};
+
+export const updateMatchResult = async (
+  tournamentId: number | string,
+  matchId: number | string,
+  payload: MatchResultInput
+): Promise<Match> => {
+  const response = await httpClient.patch(
+    `/tournaments/${Number(tournamentId)}/matches/${Number(matchId)}/result`,
+    payload
+  );
+  return response.data as Match;
+};
+
+export const getTournamentStandings = async (tournamentId: number | string): Promise<StandingRow[]> => {
+  const response = await httpClient.get(`/tournaments/${Number(tournamentId)}/standings`);
+  return response.data as StandingRow[];
+};
+
+export const getTournamentAnnouncements = async (tournamentId: number | string): Promise<Announcement[]> => {
+  const response = await httpClient.get(`/tournaments/${Number(tournamentId)}/announcements`);
+  return response.data as Announcement[];
+};
+
+export const createTournamentAnnouncement = async (
+  tournamentId: number | string,
+  payload: AnnouncementCreateInput
+): Promise<Announcement> => {
+  const response = await httpClient.post(`/tournaments/${Number(tournamentId)}/announcements`, payload);
+  return response.data as Announcement;
+};
+
+export const getMyRegistrations = async (): Promise<MyRegistration[]> => {
+  const response = await httpClient.get('/tournaments/me/registrations');
+  return response.data as MyRegistration[];
+};

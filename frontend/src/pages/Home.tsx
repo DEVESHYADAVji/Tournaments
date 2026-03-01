@@ -1,15 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { getStoredUser } from '../features/auth/auth.api';
 import { getAllTournaments } from '../features/tournaments/tournament.api';
 
 const Home: React.FC = () => {
   const [count, setCount] = React.useState<number>(0);
+  const [liveCount, setLiveCount] = React.useState<number>(0);
+  const user = getStoredUser();
 
   React.useEffect(() => {
     let active = true;
     getAllTournaments().then((items) => {
       if (active) {
         setCount(items.length);
+        setLiveCount(items.filter((item) => item.status === 'live').length);
       }
     });
     return () => {
@@ -29,25 +33,75 @@ const Home: React.FC = () => {
           <Link to="/tournaments" className="btn btn-primary">
             Browse Tournaments
           </Link>
-          <Link to="/admin" className="btn btn-secondary">
-            Open Admin
-          </Link>
+          {user?.role === 'admin' ? (
+            <Link to="/admin" className="btn btn-secondary">
+              Open Admin
+            </Link>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="panel live-rail">
+        <p className="eyebrow">Live Circuit</p>
+        <div className="live-rail-track" aria-label="Live competition highlights">
+          <span className="live-pill">Open Qualifiers</span>
+          <span className="live-pill live-pill-hot">Playoffs Running</span>
+          <span className="live-pill">Grand Finals Soon</span>
+          <span className="live-pill">North America</span>
+          <span className="live-pill">Europe</span>
+          <span className="live-pill">Online Arena</span>
         </div>
       </section>
 
       <section className="stats-grid">
         <article className="stat-card panel">
           <p className="stat-label">Live Tournaments</p>
+          <p className="stat-value">{liveCount}</p>
+        </article>
+        <article className="stat-card panel">
+          <p className="stat-label">Total Tournaments</p>
           <p className="stat-value">{count}</p>
         </article>
         <article className="stat-card panel">
-          <p className="stat-label">Primary Frontend URL</p>
-          <p className="stat-value">:5173</p>
+          <p className="stat-label">Feature Stack</p>
+          <p className="stat-value">DB + Admin</p>
         </article>
-        <article className="stat-card panel">
-          <p className="stat-label">Backend Health</p>
-          <p className="stat-value">/health</p>
-        </article>
+      </section>
+
+      <section className="panel bracket-preview">
+        <div className="bracket-header">
+          <p className="eyebrow">Bracket Preview</p>
+          <h2>Championship Flow</h2>
+        </div>
+        <div className="bracket-grid" role="presentation">
+          <div className="bracket-column">
+            <p className="bracket-round">Quarterfinals</p>
+            <article className="bracket-match">
+              <strong>Nova Squad</strong>
+              <span>vs</span>
+              <strong>Zenith Five</strong>
+            </article>
+            <article className="bracket-match">
+              <strong>Pixel Storm</strong>
+              <span>vs</span>
+              <strong>Iron Hawks</strong>
+            </article>
+          </div>
+          <div className="bracket-column">
+            <p className="bracket-round">Semifinal</p>
+            <article className="bracket-match">
+              <strong>Winner A</strong>
+              <span>vs</span>
+              <strong>Winner B</strong>
+            </article>
+          </div>
+          <div className="bracket-column">
+            <p className="bracket-round">Final</p>
+            <article className="bracket-match bracket-final">
+              <strong>Champion Slot</strong>
+            </article>
+          </div>
+        </div>
       </section>
 
       <section className="quick-links panel">

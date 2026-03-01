@@ -25,9 +25,29 @@ export interface LogoutResponse {
   message: string;
 }
 
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+  };
+}
+
 // API endpoints
 const AUTH_ENDPOINTS = {
   LOGIN: '/auth/login',
+  LOGIN_ADMIN: '/auth/login/admin',
+  LOGIN_USER: '/auth/login/user',
+  REGISTER: '/auth/register',
   LOGOUT: '/auth/logout',
   REFRESH: '/auth/refresh',
 };
@@ -38,11 +58,40 @@ const AUTH_ENDPOINTS = {
  * @returns Promise with auth token and user data
  */
 export const login = async (credentials: LoginRequest): Promise<AuthResponse> => {
+  return loginWithEndpoint(AUTH_ENDPOINTS.LOGIN, credentials);
+};
+
+export const loginAsAdmin = async (credentials: LoginRequest): Promise<AuthResponse> => {
+  return loginWithEndpoint(AUTH_ENDPOINTS.LOGIN_ADMIN, credentials);
+};
+
+export const loginAsUser = async (credentials: LoginRequest): Promise<AuthResponse> => {
+  return loginWithEndpoint(AUTH_ENDPOINTS.LOGIN_USER, credentials);
+};
+
+export const register = async (payload: RegisterRequest): Promise<RegisterResponse> => {
   try {
-    const response = await httpClient.post(
-      AUTH_ENDPOINTS.LOGIN,
-      credentials
-    );
+    const response = await httpClient.post(AUTH_ENDPOINTS.REGISTER, payload);
+    const body: any = response.data ?? {};
+    return {
+      success: Boolean(body.success),
+      message: body.message || (body.success ? 'Registration successful' : 'Registration failed'),
+      user: body.user,
+    };
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.detail ||
+      'Unable to register. Please verify details and try again.';
+    return {
+      success: false,
+      message,
+    };
+  }
+};
+
+const loginWithEndpoint = async (endpoint: string, credentials: LoginRequest): Promise<AuthResponse> => {
+  try {
+    const response = await httpClient.post(endpoint, credentials);
     const payload: any = response.data ?? {};
 
     const normalized: AuthResponse = {
@@ -72,9 +121,16 @@ export const login = async (credentials: LoginRequest): Promise<AuthResponse> =>
     return normalized;
   } catch (error) {
     console.error('Login failed:', error);
+    const apiDetail = (error as any)?.response?.data?.detail;
+    if (typeof apiDetail === 'string' && apiDetail.trim()) {
+      return {
+        success: false,
+        message: apiDetail,
+      };
+    }
     return {
       success: false,
-      message: 'Unable to login. Please verify API URL and credentials.',
+      message: 'Unable to login. Please verify email and password.',
     };
   }
 };
@@ -171,4 +227,9 @@ export const getStoredUser = () => {
  */
 export const isAuthenticated = (): boolean => {
   return !!localStorage.getItem('authToken');
+};
+
+export const isAdmin = (): boolean => {
+  const user = getStoredUser();
+  return Boolean(user && user.role === 'admin');
 };

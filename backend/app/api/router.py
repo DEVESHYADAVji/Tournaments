@@ -1,13 +1,11 @@
 from fastapi import APIRouter
 
-from app.core.config import settings
-
 api_router = APIRouter()
 
 
 @api_router.get("/", tags=["root"])
 async def root():
-    return {"service": settings.APP_NAME, "status": "ok"}
+    return {"service": "Tournaments API", "status": "ok"}
 
 
 # Versioned API router mounted at /api/v1
@@ -19,11 +17,12 @@ async def health_v1():
     return {"status": "ok", "version": "v1"}
 
 
-# Placeholder: include sub-routers here (e.g., tournaments, auth, users)
-# from . import tournaments, auth, users
-# v1_router.include_router(tournaments.router)
-# v1_router.include_router(auth.router)
-# v1_router.include_router(users.router)
+# Include feature routers under /api/v1/*
+from .v1.auth.auth_routes import router as auth_router
+from .v1.tournaments.tournament_routes import router as tournaments_router
+
+v1_router.include_router(auth_router)
+v1_router.include_router(tournaments_router)
 
 
 __all__ = ["api_router", "v1_router"]

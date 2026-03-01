@@ -2,6 +2,17 @@
 
 Full-stack tournament management project with a FastAPI backend and a React + Vite frontend.
 
+## Feature Pack (Implemented)
+
+- Role-based auth: admin and user login + user registration
+- Tournament lifecycle: create, list, details, status, schedule
+- Participant flow: user joins tournaments and tracks registrations
+- Match operations: admin schedules matches and submits results
+- Standings: automatic points table updates from match winners
+- Announcements: admin posts updates per tournament
+- Admin console UI: tournament creation, match + result management, announcements
+- Profile UI: user registration history from DB
+
 ## Tech Stack
 
 - Backend: Python, FastAPI, SQLAlchemy (async), MySQL (`asyncmy`)
@@ -74,10 +85,10 @@ Create `frontend/.env` for frontend settings:
 
 ```env
 VITE_APP_NAME=Tournaments
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```
 
-Important: frontend defaults to `http://localhost:5000/api` in code if `VITE_API_BASE_URL` is not set, so define this variable to avoid connection issues.
+Important: use `frontend/.env.local` (or `frontend/.env`) and restart the frontend dev server after changes.
 
 ## Backend Setup and Run
 

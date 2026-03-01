@@ -1,10 +1,12 @@
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic import BaseSettings, AnyUrl, validator
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ROOT_ENV_FILE = BASE_DIR.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -26,12 +28,15 @@ class Settings(BaseSettings):
 	# Other
 	PROJECT_ROOT: Path = BASE_DIR
 
-	class Config:
-		env_file = ".env"
-		env_file_encoding = "utf-8"
-		case_sensitive = True
+	model_config = SettingsConfigDict(
+		env_file=str(ROOT_ENV_FILE),
+		env_file_encoding="utf-8",
+		case_sensitive=True,
+		extra="ignore",
+	)
 
-	@validator("CORS_ORIGINS", pre=True)
+	@field_validator("CORS_ORIGINS", mode="before")
+	@classmethod
 	def _assemble_cors_origins(cls, v):
 		if isinstance(v, str):
 			# allow comma separated string in env
