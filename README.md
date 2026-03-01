@@ -29,11 +29,11 @@ Tournaments/
 |   |   `-- main.py
 |-- frontend/
 |   |-- src/
-|   |   |-- features/
+|   |   |-- features/        # domain logic + API calls
 |   |   |-- pages/
 |   |   |-- routes/
-|   |   |-- services/
-|   |   `-- config/
+|   |   |-- services/        # shared HTTP client
+|   |   `-- config/          # env helpers
 |   `-- package.json
 |-- services/
 |   |-- ai-chatbot/
@@ -41,6 +41,22 @@ Tournaments/
 |   `-- matchmaking/
 `-- README.md
 ```
+
+## Quick Navigation (Simplified)
+
+When working daily, focus on these folders only:
+
+- `backend/app/` for API and backend logic
+- `frontend/src/pages/` for screens
+- `frontend/src/features/` for feature-specific API and logic
+- `frontend/src/routes/` for route wiring
+
+You can usually ignore generated folders:
+
+- `.venv/`
+- `frontend/node_modules/`
+- `frontend/dist/`
+- `backend/app/__pycache__/`
 
 ## Environment Variables
 
@@ -70,8 +86,9 @@ From repo root:
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
-pip install fastapi uvicorn sqlalchemy asyncmy pydantic email-validator
-python backend/app/main.py
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
 ```
 
 Backend runs on `http://localhost:8000`.
