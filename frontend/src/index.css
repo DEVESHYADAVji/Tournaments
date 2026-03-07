@@ -700,6 +700,57 @@ textarea:focus {
   gap: 14px;
 }
 
+.ocr-page {
+  display: grid;
+  gap: 14px;
+}
+
+.ocr-panel p {
+  max-width: 720px;
+}
+
+.ocr-actions {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ocr-file-input {
+  display: none;
+}
+
+.ocr-file-meta {
+  margin-top: 10px;
+  color: #c9dbf7;
+  font-size: 0.9rem;
+}
+
+.ocr-result-meta {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.ocr-result-meta p {
+  color: #bed0ed;
+  font-size: 0.86rem;
+}
+
+.ocr-text-box {
+  margin-top: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #33517c;
+  background: rgba(9, 18, 31, 0.88);
+  color: #eaf2ff;
+  font-family: "IBM Plex Sans", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .profile-status {
   color: #d8ffef;
   font-size: 0.82rem;

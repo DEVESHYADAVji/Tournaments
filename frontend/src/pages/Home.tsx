@@ -113,8 +113,8 @@ const Home: React.FC = () => {
           <Link to="/tournaments" className="quick-link-card">
             Explore tournament details
           </Link>
-          <Link to="/admin" className="quick-link-card">
-            Configure admin controls
+          <Link to="/ocr" className="quick-link-card">
+            Extract text from images
           </Link>
         </div>
       </section>

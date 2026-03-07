@@ -19,9 +19,11 @@ async def health_v1():
 
 # Include feature routers under /api/v1/*
 from .v1.auth.auth_routes import router as auth_router
+from .v1.ai.ocr_routes import router as ai_router
 from .v1.tournaments.tournament_routes import router as tournaments_router
 
 v1_router.include_router(auth_router)
+v1_router.include_router(ai_router)
 v1_router.include_router(tournaments_router)
 
 

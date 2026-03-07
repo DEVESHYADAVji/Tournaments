@@ -79,6 +79,9 @@ PORT=8000
 DEBUG=true
 SQLALCHEMY_DATABASE_URI=mysql+asyncmy://root:password@127.0.0.1:3306/tournaments
 SECRET_KEY=change-this-in-real-environments
+AI_CHATBOT_OLLAMA_BASE_URL=http://localhost:11434
+AI_CHATBOT_OLLAMA_MODEL=deepseek-v3.1:671b-cloud
+AI_CHATBOT_OCR_MODEL=qwen2.5vl:7b
 ```
 
 Create `frontend/.env` for frontend settings:
@@ -150,3 +153,10 @@ Key endpoints:
 - Use lock files and pin backend dependencies in `requirements.txt`.
 - For production, tighten CORS and disable debug/reload.
 - Add tests for API routes and frontend feature modules before release.
+
+## OCR Troubleshooting
+
+- OCR needs a vision-capable Ollama model.
+- `deepseek-v3.1:671b-cloud` is not vision-capable, so it can return unrelated fabricated text for image OCR.
+- Set `AI_CHATBOT_OCR_MODEL` to a vision model (example: `qwen2.5vl:7b`) and pull it:
+  - `ollama pull qwen2.5vl:7b`

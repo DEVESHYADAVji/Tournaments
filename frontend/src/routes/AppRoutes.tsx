@@ -8,6 +8,7 @@ const Tournaments = lazy(() => import('../pages/Tournaments'));
 const TournamentDetails = lazy(() => import('../pages/TournamentDetails'));
 const Profile = lazy(() => import('../pages/Profile'));
 const Admin = lazy(() => import('../pages/Admin'));
+const ImageTextExtractor = lazy(() => import('../pages/ImageTextExtractor'));
 
 // Loading fallback component
 const LoadingFallback: React.FC = () => (
@@ -29,6 +30,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/tournaments" element={<Tournaments />} />
         <Route path="/tournaments/:id" element={<TournamentDetails />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/ocr" element={<ImageTextExtractor />} />
         <Route path="/admin" element={<AdminRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

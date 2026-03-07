@@ -106,6 +106,9 @@ const App: React.FC = () => {
             <NavLink to="/profile" className="nav-link">
               Profile
             </NavLink>
+            <NavLink to="/ocr" className="nav-link">
+              OCR
+            </NavLink>
             {user?.role === 'admin' ? (
               <NavLink to="/admin" className="nav-link">
                 Admin

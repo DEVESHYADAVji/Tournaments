@@ -6,3 +6,5 @@ email-validator==2.2.0
 sqlalchemy==2.0.38
 asyncmy==0.2.11
 python-dotenv==1.0.1
+httpx==0.28.1
+python-multipart==0.0.20
