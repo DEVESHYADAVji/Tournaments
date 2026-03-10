@@ -161,11 +161,6 @@ export const joinTournament = async (
   return response.data;
 };
 
-export const getTournamentParticipants = async (tournamentId: number | string): Promise<Registration[]> => {
-  const response = await httpClient.get(`/tournaments/${Number(tournamentId)}/participants`);
-  return response.data as Registration[];
-};
-
 export const getTournamentMatches = async (tournamentId: number | string): Promise<Match[]> => {
   const response = await httpClient.get(`/tournaments/${Number(tournamentId)}/matches`);
   return response.data as Match[];

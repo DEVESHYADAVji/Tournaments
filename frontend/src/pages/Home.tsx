@@ -1,19 +1,71 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Carousel from '../compoments/Carousel/Carousel';
+import TournamentCard from '../compoments/TournamentCard/TournamentCard';
 import { getStoredUser } from '../features/auth/auth.api';
 import { getAllTournaments } from '../features/tournaments/tournament.api';
 
+interface CarouselSlide {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  link?: string;
+}
+
+interface Tournament {
+  id: number;
+  name: string;
+  game_name?: string;
+  description?: string;
+  banner_image?: string;
+  status?: string;
+  prize_pool?: number;
+  start_date?: string;
+  end_date?: string;
+}
+
 const Home: React.FC = () => {
+  const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
   const [count, setCount] = React.useState<number>(0);
   const [liveCount, setLiveCount] = React.useState<number>(0);
+  const [loading, setLoading] = React.useState(true);
   const user = getStoredUser();
+
+  // Sample carousel slides
+  const carouselSlides: CarouselSlide[] = [
+    {
+      id: '1',
+      title: 'Championship Series 2026',
+      description: 'Be part of the biggest tournament of the year. Compete for glory and prizes!',
+      image: 'https://via.placeholder.com/1200x400?text=Championship+Series+2026',
+      link: '/tournaments'
+    },
+    {
+      id: '2',
+      title: 'Weekly Grind Tournament',
+      description: 'Join us every week for exciting matches and instant rewards.',
+      image: 'https://via.placeholder.com/1200x400?text=Weekly+Grind+Tournament',
+      link: '/tournaments'
+    },
+    {
+      id: '3',
+      title: 'New Players Welcome',
+      description: 'First time competing? Join our beginner-friendly tournaments and learn the ropes.',
+      image: 'https://via.placeholder.com/1200x400?text=New+Players+Welcome',
+      link: '/tournaments'
+    }
+  ];
 
   React.useEffect(() => {
     let active = true;
+    setLoading(true);
     getAllTournaments().then((items) => {
       if (active) {
+        setTournaments(items);
         setCount(items.length);
         setLiveCount(items.filter((item) => item.status === 'live').length);
+        setLoading(false);
       }
     });
     return () => {
@@ -21,39 +73,39 @@ const Home: React.FC = () => {
     };
   }, []);
 
+  const upcomingTournaments = tournaments.slice(0, 8);
+
   return (
     <div className="home-page page-enter">
-      <section className="hero panel">
-        <p className="eyebrow">Tournament Platform</p>
-        <h1>Compete smarter with a modern tournament dashboard.</h1>
-        <p>
-          Discover events, track standings, and manage operations from one place.
-        </p>
-        <div className="hero-actions">
-          <Link to="/tournaments" className="btn btn-primary">
-            Browse Tournaments
-          </Link>
-          {user?.role === 'admin' ? (
-            <Link to="/admin" className="btn btn-secondary">
-              Open Admin
-            </Link>
-          ) : null}
-        </div>
-      </section>
+      {/* Featured Carousel */}
+      <Carousel slides={carouselSlides} autoPlay={true} autoPlayInterval={6000} />
 
-      <section className="panel live-rail">
-        <p className="eyebrow">Live Circuit</p>
-        <div className="live-rail-track" aria-label="Live competition highlights">
-          <span className="live-pill">Open Qualifiers</span>
-          <span className="live-pill live-pill-hot">Playoffs Running</span>
-          <span className="live-pill">Grand Finals Soon</span>
-          <span className="live-pill">North America</span>
-          <span className="live-pill">Europe</span>
-          <span className="live-pill">Online Arena</span>
-        </div>
-      </section>
+      {/* Upcoming Tournaments Section */}
+      <div className="tournament-cards-section">
+        <h2 className="tournament-section-title">🏆 Upcoming Tournaments</h2>
+        {loading ? (
+          <div className="loading-view">
+            <div className="spinner"></div>
+            <p>Loading tournaments...</p>
+          </div>
+        ) : upcomingTournaments.length > 0 ? (
+          <div className="tournament-grid">
+            {upcomingTournaments.map((tournament) => (
+              <TournamentCard 
+                key={tournament.id} 
+                tournament={tournament}
+              />
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#95a7c7' }}>
+            <p>No tournaments available at the moment. Check back soon!</p>
+          </div>
+        )}
+      </div>
 
-      <section className="stats-grid">
+      {/* Stats Section */}
+      <section style={{ marginTop: '40px' }} className="stats-grid stats-grid-2col">
         <article className="stat-card panel">
           <p className="stat-label">Live Tournaments</p>
           <p className="stat-value">{liveCount}</p>
@@ -62,59 +114,20 @@ const Home: React.FC = () => {
           <p className="stat-label">Total Tournaments</p>
           <p className="stat-value">{count}</p>
         </article>
-        <article className="stat-card panel">
-          <p className="stat-label">Feature Stack</p>
-          <p className="stat-value">DB + Admin</p>
-        </article>
       </section>
 
-      <section className="panel bracket-preview">
-        <div className="bracket-header">
-          <p className="eyebrow">Bracket Preview</p>
-          <h2>Championship Flow</h2>
-        </div>
-        <div className="bracket-grid" role="presentation">
-          <div className="bracket-column">
-            <p className="bracket-round">Quarterfinals</p>
-            <article className="bracket-match">
-              <strong>Nova Squad</strong>
-              <span>vs</span>
-              <strong>Zenith Five</strong>
-            </article>
-            <article className="bracket-match">
-              <strong>Pixel Storm</strong>
-              <span>vs</span>
-              <strong>Iron Hawks</strong>
-            </article>
-          </div>
-          <div className="bracket-column">
-            <p className="bracket-round">Semifinal</p>
-            <article className="bracket-match">
-              <strong>Winner A</strong>
-              <span>vs</span>
-              <strong>Winner B</strong>
-            </article>
-          </div>
-          <div className="bracket-column">
-            <p className="bracket-round">Final</p>
-            <article className="bracket-match bracket-final">
-              <strong>Champion Slot</strong>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section className="quick-links panel">
+      {/* Quick Actions Section */}
+      <section className="quick-links panel" style={{ marginTop: '30px' }}>
         <h2>Quick Actions</h2>
         <div className="quick-links-grid">
           <Link to="/profile" className="quick-link-card">
-            Manage your profile
+            👤 Manage Your Profile
           </Link>
           <Link to="/tournaments" className="quick-link-card">
-            Explore tournament details
+            🎮 Explore All Tournaments
           </Link>
           <Link to="/ocr" className="quick-link-card">
-            Extract text from images
+            📄 Extract Text from Images
           </Link>
         </div>
       </section>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import ProfileIconSelector from '../compoments/ProfileIconSelector/ProfileIconSelector';
 import { getStoredUser, isAuthenticated, logout } from '../features/auth/auth.api';
 import { getMyRegistrations, type MyRegistration } from '../features/tournaments/tournament.api';
 
@@ -7,6 +8,7 @@ const Profile: React.FC = () => {
   const stored = getStoredUser();
   const [name, setName] = React.useState(stored?.name || 'Guest User');
   const [email, setEmail] = React.useState(stored?.email || 'guest@example.com');
+  const [profileIcon, setProfileIcon] = React.useState(stored?.profile_icon || 1);
   const [editMode, setEditMode] = React.useState(false);
   const [message, setMessage] = React.useState('');
   const [registrations, setRegistrations] = React.useState<MyRegistration[]>([]);
@@ -41,7 +43,7 @@ const Profile: React.FC = () => {
 
   const handleSave = () => {
     const previous = getStoredUser() || {};
-    localStorage.setItem('user', JSON.stringify({ ...previous, name, email }));
+    localStorage.setItem('user', JSON.stringify({ ...previous, name, email, profile_icon: profileIcon }));
     setEditMode(false);
     setMessage('Profile updated locally.');
   };
@@ -81,6 +83,12 @@ const Profile: React.FC = () => {
             disabled={!editMode}
           />
         </div>
+        {editMode && (
+          <ProfileIconSelector 
+            selectedIcon={profileIcon}
+            onIconSelect={setProfileIcon}
+          />
+        )}
         <p>
           <strong>Tournaments Participated:</strong> {user.tournamentsParticipated}
         </p>

@@ -541,20 +541,6 @@ async def join_tournament(tournament_id: int, payload: JoinRequest, request: Req
     return JoinResponse(success=True, message="Successfully joined tournament", registration=registration)
 
 
-@router.get("/{tournament_id}/participants", response_model=list[RegistrationOut])
-async def list_participants(tournament_id: int):
-    await _get_tournament_or_404(tournament_id)
-    async with async_session() as session:
-        registrations = (
-            await session.execute(
-                select(TournamentRegistration)
-                .where(TournamentRegistration.tournament_id == tournament_id)
-                .order_by(TournamentRegistration.points.desc(), TournamentRegistration.created_at.asc())
-            )
-        ).scalars().all()
-    return registrations
-
-
 @router.get("/{tournament_id}/standings", response_model=list[StandingRow])
 async def get_standings(tournament_id: int):
     await _get_tournament_or_404(tournament_id)

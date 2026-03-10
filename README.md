@@ -32,35 +32,37 @@ Full-stack tournament management project with a FastAPI backend and a React + Vi
 Tournaments/
 |-- backend/
 |   |-- app/
-|   |   |-- api/
-|   |   |-- core/
-|   |   |-- models/
-|   |   |-- schemas/
-|   |   |-- services/
-|   |   `-- main.py
+|   |   |-- api/             # API routes (v1: auth, tournaments, ocr, ai)
+|   |   |-- core/            # config, database setup
+|   |   |-- models/          # SQLAlchemy ORM models
+|   |   `-- main.py          # FastAPI app entry
 |-- frontend/
 |   |-- src/
-|   |   |-- features/        # domain logic + API calls
-|   |   |-- pages/
-|   |   |-- routes/
+|   |   |-- compoments/      # React components (Header, NavBar, etc.)
+|   |   |-- features/        # domain logic + API calls (auth, tournaments, ocr)
+|   |   |-- pages/           # page components (Home, Profile, Tournaments, etc.)
+|   |   |-- routes/          # route definitions
 |   |   |-- services/        # shared HTTP client
-|   |   `-- config/          # env helpers
+|   |   |-- config/          # env helpers, profile icons
+|   |   |-- main.tsx         # React entry point
+|   |   `-- App.tsx          # main app component
 |   `-- package.json
 |-- services/
-|   |-- ai-chatbot/
-|   |-- analytics/
-|   `-- matchmaking/
-`-- README.md
+|   `-- ai-chatbot/          # standalone FastAPI chatbot service
+|-- README.md
+`-- requirements.txt
 ```
 
 ## Quick Navigation (Simplified)
 
 When working daily, focus on these folders only:
 
-- `backend/app/` for API and backend logic
-- `frontend/src/pages/` for screens
-- `frontend/src/features/` for feature-specific API and logic
-- `frontend/src/routes/` for route wiring
+- `backend/app/api/` for API routes and endpoints
+- `backend/app/models/` for database models
+- `frontend/src/pages/` for page/screen components
+- `frontend/src/features/` for feature-specific API calls and business logic
+- `frontend/src/compoments/` for reusable UI components
+- `frontend/src/routes/` for route configuration
 
 You can usually ignore generated folders:
 

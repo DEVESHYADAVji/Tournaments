@@ -49,7 +49,6 @@ const AUTH_ENDPOINTS = {
   LOGIN_USER: '/auth/login/user',
   REGISTER: '/auth/register',
   LOGOUT: '/auth/logout',
-  REFRESH: '/auth/refresh',
 };
 
 /**
@@ -163,40 +162,6 @@ export const logout = async (): Promise<LogoutResponse> => {
     return {
       success: true,
       message: 'Logged out locally',
-    };
-  }
-};
-
-/**
- * Refresh authentication token
- * @returns Promise with new auth token
- */
-export const refreshToken = async (): Promise<AuthResponse> => {
-  try {
-    const response = await httpClient.post(
-      AUTH_ENDPOINTS.REFRESH
-    );
-
-    const payload: any = response.data ?? {};
-    const normalized: AuthResponse = {
-      success: Boolean(payload.success),
-      message: payload.message || 'Token refreshed',
-      data: payload.data,
-    };
-
-    // Update token if refresh is successful
-    if (normalized.success && normalized.data?.token) {
-      localStorage.setItem('authToken', normalized.data.token);
-    }
-
-    return normalized;
-  } catch (error) {
-    console.error('Token refresh failed:', error);
-
-    // Endpoint is not yet available; keep user session unchanged.
-    return {
-      success: false,
-      message: 'Refresh endpoint is unavailable',
     };
   }
 };

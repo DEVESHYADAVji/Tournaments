@@ -1,5 +1,7 @@
 import React from 'react';
-import { BrowserRouter, NavLink } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
+import Header from './compoments/Header/Header';
+import NavBar from './compoments/NavBar/NavBar';
 import AppRoutes from './routes/AppRoutes';
 import {
   getStoredUser,
@@ -87,50 +89,16 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
-      <div className="app-shell">
-        <header className="topbar">
-          <div className="brand">
-            <span className="brand-badge">T</span>
-            <div>
-              <p className="brand-title">Tournaments</p>
-              <p className="brand-subtitle">Play. Track. Win.</p>
-            </div>
-          </div>
-          <nav className="topbar-nav" aria-label="Main">
-            <NavLink to="/" className="nav-link">
-              Home
-            </NavLink>
-            <NavLink to="/tournaments" className="nav-link">
-              Tournaments
-            </NavLink>
-            <NavLink to="/profile" className="nav-link">
-              Profile
-            </NavLink>
-            <NavLink to="/ocr" className="nav-link">
-              OCR
-            </NavLink>
-            {user?.role === 'admin' ? (
-              <NavLink to="/admin" className="nav-link">
-                Admin
-              </NavLink>
-            ) : null}
-            {!loggedIn ? (
-              <button type="button" className="btn btn-primary nav-auth-btn" onClick={openLoginModal}>
-                Login
-              </button>
-            ) : (
-              <button type="button" className="btn btn-ghost nav-auth-btn" onClick={handleLogout} disabled={busy}>
-                Logout
-              </button>
-            )}
-          </nav>
-        </header>
+      <div className="app-wrapper">
+        <Header 
+          user={user} 
+          loggedIn={loggedIn} 
+          onLoginClick={openLoginModal}
+          onLogoutClick={handleLogout}
+          busy={busy}
+        />
+        <NavBar user={user} />
         <main className="page-wrap">
-          {loggedIn && user ? (
-            <p className="nav-user">
-              Signed in as <strong>{user.name || user.email}</strong> ({user.role})
-            </p>
-          ) : null}
           <AppRoutes />
         </main>
       </div>
