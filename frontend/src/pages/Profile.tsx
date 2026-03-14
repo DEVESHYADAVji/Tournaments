@@ -62,38 +62,45 @@ const Profile: React.FC = () => {
   return (
     <div className="profile-page page-enter">
       <h1>My Profile</h1>
-      <div className="profile-info panel">
-        <p className="profile-status">{user.loggedIn ? 'Authenticated' : 'Guest Mode'}</p>
-        <div className="profile-field">
-          <label htmlFor="profile-name">Name</label>
-          <input
-            id="profile-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={!editMode}
-          />
+      <div className="profile-info panel" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=1200&h=400&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', minHeight: '250px' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(13, 13, 13, 0.95), rgba(26, 26, 26, 0.95))' }}></div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <p className="profile-status" style={{ fontSize: '16px', color: '#ffc107', fontWeight: '600' }}>{user.loggedIn ? '✅ Authenticated' : '⚠️ Guest Mode'}</p>
+          <div className="profile-field">
+            <label htmlFor="profile-name">Name</label>
+            <input
+              id="profile-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={!editMode}
+            />
+          </div>
+          <div className="profile-field">
+            <label htmlFor="profile-email">Email</label>
+            <input
+              id="profile-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={!editMode}
+            />
+          </div>
+          {editMode && (
+            <ProfileIconSelector 
+              selectedIcon={profileIcon}
+              onIconSelect={setProfileIcon}
+            />
+          )}
+          <p style={{ color: '#cccccc', marginTop: '15px' }}>
+            <strong>🏆 Tournaments Participated:</strong> {user.tournamentsParticipated}
+          </p>
         </div>
-        <div className="profile-field">
-          <label htmlFor="profile-email">Email</label>
-          <input
-            id="profile-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={!editMode}
-          />
-        </div>
-        {editMode && (
-          <ProfileIconSelector 
-            selectedIcon={profileIcon}
-            onIconSelect={setProfileIcon}
-          />
-        )}
-        <p>
-          <strong>Tournaments Participated:</strong> {user.tournamentsParticipated}
-        </p>
-        <div className="panel">
-          <h3>My Registrations</h3>
+      </div>
+
+      <div className="panel" style={{ marginTop: '30px', backgroundImage: 'url(https://images.unsplash.com/photo-1460647926306-322e0efc209c?w=1200&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(13, 13, 13, 0.92)' }}></div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h3 style={{ color: '#ffc107', marginBottom: '20px' }}>📊 My Registrations</h3>
           {registrations.length ? (
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -126,25 +133,26 @@ const Profile: React.FC = () => {
               </table>
             </div>
           ) : (
-            <p>No registrations yet. Join tournaments to track progress.</p>
+            <p style={{ color: '#95a7c7' }}>No registrations yet. Join tournaments to track progress.</p>
           )}
         </div>
-        <div className="cta-row">
-          {!editMode ? (
-            <button className="btn btn-secondary" onClick={() => setEditMode(true)}>
-              Edit Profile
-            </button>
-          ) : (
-            <button className="btn btn-primary" onClick={handleSave}>
-              Save Changes
-            </button>
-          )}
-          <button className="btn btn-ghost" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-        {message && <p className="message-text">{message}</p>}
       </div>
+
+      <div className="cta-row" style={{ marginTop: '20px' }}>
+        {!editMode ? (
+          <button className="btn btn-secondary" onClick={() => setEditMode(true)}>
+            Edit Profile
+          </button>
+        ) : (
+          <button className="btn btn-primary" onClick={handleSave}>
+            Save Changes
+          </button>
+        )}
+        <button className="btn btn-ghost" onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
+      {message && <p className="message-text">{message}</p>}
     </div>
   );
 };

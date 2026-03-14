@@ -3,6 +3,8 @@ import { BrowserRouter } from 'react-router-dom';
 import Header from './compoments/Header/Header';
 import NavBar from './compoments/NavBar/NavBar';
 import AppRoutes from './routes/AppRoutes';
+import FloatingHelpIcon from './compoments/FloatingHelpIcon/FloatingHelpIcon';
+import HelpChat from './compoments/HelpChat/HelpChat';
 import {
   getStoredUser,
   isAuthenticated,
@@ -14,6 +16,7 @@ import {
 
 const App: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [showHelpChat, setShowHelpChat] = React.useState(false);
   const [mode, setMode] = React.useState<'login' | 'register'>('login');
   const [role, setRole] = React.useState<'user' | 'admin'>('user');
   const [loginEmail, setLoginEmail] = React.useState('');
@@ -203,6 +206,9 @@ const App: React.FC = () => {
           </section>
         </div>
       ) : null}
+
+      <FloatingHelpIcon onClick={() => setShowHelpChat(true)} />
+      <HelpChat isOpen={showHelpChat} onClose={() => setShowHelpChat(false)} />
     </BrowserRouter>
   );
 };

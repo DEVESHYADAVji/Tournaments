@@ -95,7 +95,53 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 
 Important: use `frontend/.env.local` (or `frontend/.env`) and restart the frontend dev server after changes.
 
-## Backend Setup and Run
+## Running the Project
+
+### ⭐ Quick Start (Recommended)
+
+Run all microservices from the root directory:
+
+```bash
+# Activate virtual environment first
+.venv\Scripts\activate
+
+# Start all services
+python run.py
+```
+
+This starts **three microservices** simultaneously:
+
+1. **Frontend Service** (React + Vite) → http://localhost:5173
+2. **Backend Service** (FastAPI) → http://localhost:8000
+   - 📚 API Docs: http://localhost:8000/docs
+3. **AI Services**:
+   - Help Chatbot (Document QA) → http://localhost:8002
+     - 📚 Docs: http://localhost:8002/docs
+   - OCR Service (Image to Text) → http://localhost:8001
+     - 📚 Docs: http://localhost:8001/docs
+
+### Alternative: Start Individual Services
+
+```bash
+# Start only frontend
+python run.py --service frontend
+
+# Start only backend
+python run.py --service backend
+
+# Start only help chatbot
+python run.py --service help-chatbot
+
+# Start only OCR service
+python run.py --service ocr-service
+
+# List all available services
+python run.py --list
+```
+
+### Manual Setup (If Needed)
+
+#### Backend Setup and Run
 
 From repo root:
 
@@ -104,7 +150,6 @@ python -m venv .venv
 .venv\Scripts\activate
 cd backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
 ```
 
 Backend runs on `http://localhost:8000`.
@@ -138,7 +183,7 @@ npm run preview
 Run separately if needed:
 
 ```bash
-python services/ai-chatbot/app.py
+python services/ai-chatbot/imgtotext.py
 ```
 
 Service default URL: `http://localhost:8001`
@@ -147,6 +192,57 @@ Key endpoints:
 
 - `GET /health`
 - `POST /chat`
+
+## Optional Help Chatbot Service
+
+A document-based Q&A chatbot that answers questions strictly from uploaded documents (PDF, DOCX, TXT).
+
+Run separately if needed:
+
+```bash
+python services/ai-helpchat/chatbot.py
+```
+
+Service default URL: `http://localhost:8002`
+
+### Setup Steps:
+
+1. **Install dependencies:**
+   ```bash
+   pip install PyPDF2 python-docx
+   ```
+
+2. **Configure Ollama:** Ensure Ollama is running with a model that supports chat (e.g., deepseek-v3.1)
+
+3. **Environment variables:** Set these in your `.env` file:
+   ```
+   AI_CHATBOT_OLLAMA_BASE_URL=http://localhost:11434
+   AI_CHATBOT_OLLAMA_MODEL=deepseek-v3.1:671b-cloud
+   AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS=180
+   VITE_HELP_CHATBOT_BASE_URL=http://localhost:8002
+   ```
+
+### Key Features:
+
+- **Document Upload:** Support for PDF, DOCX, and TXT files
+- **Strict Context:** Answers only from document content (temperature: 0.1)
+- **Smart Matching:** Relevance-based chunk retrieval
+- **Floating UI:** Help icon in bottom-right corner with popup chat
+
+### Key Endpoints:
+
+- `GET /health` - Service status and loaded document info
+- `POST /upload-document` - Upload a document (multipart/form-data)
+- `POST /ask` - Ask a question about the document
+- `POST /clear-document` - Clear the loaded document
+
+### Frontend Integration:
+
+The help chatbot is integrated into the frontend as a floating help icon. Users can:
+1. Click the floating help icon (bottom-right corner)
+2. Upload a document (PDF/DOCX/TXT)
+3. Ask questions about the document content
+4. Receive accurate answers based strictly on the document
 
 ## Notes and Best Practices
 

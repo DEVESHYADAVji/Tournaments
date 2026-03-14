@@ -158,96 +158,111 @@ const Admin: React.FC = () => {
 
   return (
     <div className="admin-page page-enter">
-      <section className="panel page-header">
-        <div>
-          <p className="eyebrow">Operations</p>
-          <h1>Admin Panel</h1>
+      <section className="panel page-header" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=400&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', minHeight: '250px' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(13, 13, 13, 0.93), rgba(26, 26, 26, 0.93))' }}></div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <p className="eyebrow" style={{ color: '#ffc107' }}>⚙️ Operations</p>
+          <h1 style={{ color: '#ffffff' }}>Admin Panel</h1>
         </div>
         <select
           className="search-input"
           value={selectedTournamentId ?? ''}
           onChange={(e) => setSelectedTournamentId(Number(e.target.value))}
+          style={{ position: 'relative', zIndex: 1, background: '#1a1a1a', border: '2px solid #c50000', color: '#ffffff' }}
         >
           {tournaments.map((item) => (
-            <option key={item.id} value={item.id}>
+            <option key={item.id} value={item.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
               #{item.id} {item.name}
             </option>
           ))}
         </select>
       </section>
 
-      <section className="panel">
-        <h2>Create Tournament</h2>
-        <form className="detail-page" onSubmit={handleCreate}>
-          <input
-            value={newTournament.name}
-            placeholder="Tournament name"
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, name: e.target.value }))}
-            required
-          />
-          <input
-            value={newTournament.game}
-            placeholder="Game title"
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, game: e.target.value }))}
-            required
-          />
-          <input
-            value={newTournament.format}
-            placeholder="Format"
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, format: e.target.value }))}
-            required
-          />
-          <input
-            value={newTournament.location}
-            placeholder="Location"
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, location: e.target.value }))}
-          />
-          <input
-            value={newTournament.description}
-            placeholder="Description"
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, description: e.target.value }))}
-          />
-          <input
-            type="datetime-local"
-            value={newTournament.start_date}
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, start_date: e.target.value }))}
-          />
-          <input
-            type="datetime-local"
-            value={newTournament.end_date}
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, end_date: e.target.value }))}
-          />
-          <input
-            type="number"
-            value={newTournament.prize_pool}
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, prize_pool: Number(e.target.value) }))}
-            placeholder="Prize pool"
-          />
-          <input
-            type="number"
-            value={newTournament.max_teams}
-            onChange={(e) => setNewTournament((prev) => ({ ...prev, max_teams: Number(e.target.value) }))}
-            placeholder="Max teams"
-          />
-          <select
-            className="search-input"
-            value={newTournament.status}
-            onChange={(e) =>
-              setNewTournament((prev) => ({
-                ...prev,
-                status: e.target.value as 'registration_open' | 'upcoming' | 'live' | 'completed',
-              }))
-            }
-          >
-            <option value="registration_open">Registration Open</option>
-            <option value="upcoming">Upcoming</option>
-            <option value="live">Live</option>
-            <option value="completed">Completed</option>
-          </select>
-          <button className="btn btn-primary" type="submit" disabled={creating}>
-            {creating ? 'Creating...' : 'Create Tournament'}
-          </button>
-        </form>
+      <section className="panel" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', marginTop: '30px' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(13, 13, 13, 0.92)' }}></div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h2 style={{ color: '#ffc107', marginBottom: '20px' }}>➕ Create Tournament</h2>
+          <form className="detail-page" onSubmit={handleCreate}>
+            <input
+              value={newTournament.name}
+              placeholder="Tournament name"
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, name: e.target.value }))}
+              required
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              value={newTournament.game}
+              placeholder="Game title"
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, game: e.target.value }))}
+              required
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              value={newTournament.format}
+              placeholder="Format"
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, format: e.target.value }))}
+              required
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              value={newTournament.location}
+              placeholder="Location"
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, location: e.target.value }))}
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              value={newTournament.description}
+              placeholder="Description"
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, description: e.target.value }))}
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              type="datetime-local"
+              value={newTournament.start_date}
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, start_date: e.target.value }))}
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              type="datetime-local"
+              value={newTournament.end_date}
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, end_date: e.target.value }))}
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              type="number"
+              value={newTournament.prize_pool}
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, prize_pool: Number(e.target.value) }))}
+              placeholder="Prize pool"
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              type="number"
+              value={newTournament.max_teams}
+              onChange={(e) => setNewTournament((prev) => ({ ...prev, max_teams: Number(e.target.value) }))}
+              placeholder="Max teams"
+              style={{ borderColor: '#c50000' }}
+            />
+            <select
+              className="search-input"
+              value={newTournament.status}
+              onChange={(e) =>
+                setNewTournament((prev) => ({
+                  ...prev,
+                  status: e.target.value as 'registration_open' | 'upcoming' | 'live' | 'completed',
+                }))
+              }
+              style={{ borderColor: '#c50000', background: '#1a1a1a' }}
+            >
+              <option value="registration_open">Registration Open</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="live">Live</option>
+              <option value="completed">Completed</option>
+            </select>
+            <button className="btn btn-primary" type="submit" disabled={creating} style={{ background: 'linear-gradient(135deg, #c50000, #ffc107)' }}>
+              {creating ? '⏳ Creating...' : '✅ Create Tournament'}
+            </button>
+          </form>
+        </div>
       </section>
 
       {loading ? (
@@ -256,139 +271,164 @@ const Admin: React.FC = () => {
           <p>Loading admin data...</p>
         </div>
       ) : (
-        <section className="panel admin-dashboard">
-          <h2>Manage Tournaments</h2>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Date</th>
-                  <th>Location</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tournaments.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.id}</td>
-                    <td>{item.name}</td>
-                    <td>{item.start_date ? new Date(item.start_date).toLocaleDateString() : 'TBA'}</td>
-                    <td>{item.location || 'TBA'}</td>
-                    <td>
-                      <Link to={`/tournaments/${item.id}`} className="table-link">
-                        Open
-                      </Link>
-                    </td>
+        <section className="panel admin-dashboard" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1551431009-381d36ac3a14?w=1200&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', marginTop: '30px' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(13, 13, 13, 0.92)' }}></div>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <h2 style={{ color: '#ffc107', marginBottom: '20px' }}>📊 Manage Tournaments</h2>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr style={{ background: 'rgba(197, 0, 0, 0.3)' }}>
+                    <th style={{ color: '#ffc107' }}>ID</th>
+                    <th style={{ color: '#ffc107' }}>Name</th>
+                    <th style={{ color: '#ffc107' }}>Date</th>
+                    <th style={{ color: '#ffc107' }}>Location</th>
+                    <th style={{ color: '#ffc107' }}>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tournaments.map((item) => (
+                    <tr key={item.id} style={{ borderBottom: '1px solid rgba(197, 0, 0, 0.3)' }}>
+                      <td style={{ color: '#ffffff' }}>#{item.id}</td>
+                      <td style={{ color: '#ffffff' }}>{item.name}</td>
+                      <td style={{ color: '#cccccc' }}>{item.start_date ? new Date(item.start_date).toLocaleDateString() : 'TBA'}</td>
+                      <td style={{ color: '#cccccc' }}>{item.location || 'TBA'}</td>
+                      <td>
+                        <Link to={`/tournaments/${item.id}`} className="table-link" style={{ color: '#ffc107' }}>
+                          Open 🔗
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       )}
 
       <section className="admin-cards">
-        <article className="panel">
-          <h3>Schedule Match</h3>
-          <form className="detail-page" onSubmit={handleCreateMatch}>
-            <input
-              value={newMatch.round_name}
-              onChange={(e) => setNewMatch((prev) => ({ ...prev, round_name: e.target.value }))}
-              placeholder="Round name"
-              required
-            />
-            <input
-              value={newMatch.team_a}
-              onChange={(e) => setNewMatch((prev) => ({ ...prev, team_a: e.target.value }))}
-              placeholder="Team A"
-              required
-            />
-            <input
-              value={newMatch.team_b}
-              onChange={(e) => setNewMatch((prev) => ({ ...prev, team_b: e.target.value }))}
-              placeholder="Team B"
-              required
-            />
-            <input
-              type="datetime-local"
-              value={newMatch.scheduled_at}
-              onChange={(e) => setNewMatch((prev) => ({ ...prev, scheduled_at: e.target.value }))}
-            />
-            <button className="btn btn-secondary" type="submit">
-              Create Match
-            </button>
-          </form>
+        <article className="panel" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1460647926306-322e0efc209c?w=400&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(13, 13, 13, 0.92)' }}></div>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <h3 style={{ color: '#ffc107', marginBottom: '15px' }}>⚔️ Schedule Match</h3>
+            <form className="detail-page" onSubmit={handleCreateMatch}>
+              <input
+                value={newMatch.round_name}
+                onChange={(e) => setNewMatch((prev) => ({ ...prev, round_name: e.target.value }))}
+                placeholder="Round name"
+                required
+                style={{ borderColor: '#c50000' }}
+              />
+              <input
+                value={newMatch.team_a}
+                onChange={(e) => setNewMatch((prev) => ({ ...prev, team_a: e.target.value }))}
+                placeholder="Team A"
+                required
+                style={{ borderColor: '#c50000' }}
+              />
+              <input
+                value={newMatch.team_b}
+                onChange={(e) => setNewMatch((prev) => ({ ...prev, team_b: e.target.value }))}
+                placeholder="Team B"
+                required
+                style={{ borderColor: '#c50000' }}
+              />
+              <input
+                type="datetime-local"
+                value={newMatch.scheduled_at}
+                onChange={(e) => setNewMatch((prev) => ({ ...prev, scheduled_at: e.target.value }))}
+                style={{ borderColor: '#c50000' }}
+              />
+              <button className="btn btn-secondary" type="submit" style={{ background: 'linear-gradient(135deg, #c50000, #ffc107)' }}>
+                ✅ Create Match
+              </button>
+            </form>
+          </div>
         </article>
-        <article className="panel">
-          <h3>Publish Announcement</h3>
-          <form className="detail-page" onSubmit={handleAnnouncement}>
-            <input
-              value={announcement.title}
-              onChange={(e) => setAnnouncement((prev) => ({ ...prev, title: e.target.value }))}
-              placeholder="Announcement title"
-              required
-            />
-            <input
-              value={announcement.content}
-              onChange={(e) => setAnnouncement((prev) => ({ ...prev, content: e.target.value }))}
-              placeholder="Announcement content"
-              required
-            />
-            <button className="btn btn-secondary" type="submit">
-              Publish
-            </button>
-          </form>
+        <article className="panel" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1551431009-381d36ac3a14?w=400&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(13, 13, 13, 0.92)' }}></div>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <h3 style={{ color: '#ffc107', marginBottom: '15px' }}>📢 Publish Announcement</h3>
+            <form className="detail-page" onSubmit={handleAnnouncement}>
+              <input
+                value={announcement.title}
+                onChange={(e) => setAnnouncement((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder="Announcement title"
+                required
+                style={{ borderColor: '#c50000' }}
+              />
+              <input
+                value={announcement.content}
+                onChange={(e) => setAnnouncement((prev) => ({ ...prev, content: e.target.value }))}
+                placeholder="Announcement content"
+                required
+                style={{ borderColor: '#c50000' }}
+              />
+              <button className="btn btn-secondary" type="submit" style={{ background: 'linear-gradient(135deg, #c50000, #ffc107)' }}>
+                📤 Publish
+              </button>
+            </form>
+          </div>
         </article>
       </section>
 
-      <section className="panel">
-        <h2>Update Match Result</h2>
-        <form className="detail-page" onSubmit={handleUpdateResult}>
-          <select
-            className="search-input"
-            value={resultForm.match_id}
-            onChange={(e) => setResultForm((prev) => ({ ...prev, match_id: e.target.value }))}
-            required
-          >
-            <option value="">Select match</option>
-            {matches.map((match) => (
-              <option key={match.id} value={match.id}>
-                #{match.id} {match.team_a} vs {match.team_b} ({match.round_name})
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            value={resultForm.team_a_score}
-            onChange={(e) => setResultForm((prev) => ({ ...prev, team_a_score: Number(e.target.value) }))}
-            placeholder="Team A score"
-            min={0}
-            required
-          />
-          <input
-            type="number"
-            value={resultForm.team_b_score}
-            onChange={(e) => setResultForm((prev) => ({ ...prev, team_b_score: Number(e.target.value) }))}
-            placeholder="Team B score"
-            min={0}
-            required
-          />
-          <input
-            value={resultForm.winner}
-            onChange={(e) => setResultForm((prev) => ({ ...prev, winner: e.target.value }))}
-            placeholder="Winner team (optional)"
-          />
-          <button className="btn btn-primary" type="submit">
-            Update Result
-          </button>
-        </form>
+      <section className="panel" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', marginTop: '30px' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(13, 13, 13, 0.92)' }}></div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h2 style={{ color: '#ffc107', marginBottom: '20px' }}>🎯 Update Match Result</h2>
+          <form className="detail-page" onSubmit={handleUpdateResult}>
+            <select
+              className="search-input"
+              value={resultForm.match_id}
+              onChange={(e) => setResultForm((prev) => ({ ...prev, match_id: e.target.value }))}
+              required
+              style={{ background: '#1a1a1a', border: '2px solid #c50000', color: '#ffffff' }}
+            >
+              <option value="" style={{ background: '#1a1a1a', color: '#ffffff' }}>Select match</option>
+              {matches.map((match) => (
+                <option key={match.id} value={match.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
+                  #{match.id} {match.team_a} vs {match.team_b} ({match.round_name})
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={resultForm.team_a_score}
+              onChange={(e) => setResultForm((prev) => ({ ...prev, team_a_score: Number(e.target.value) }))}
+              placeholder="Team A score"
+              min={0}
+              required
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              type="number"
+              value={resultForm.team_b_score}
+              onChange={(e) => setResultForm((prev) => ({ ...prev, team_b_score: Number(e.target.value) }))}
+              placeholder="Team B score"
+              min={0}
+              required
+              style={{ borderColor: '#c50000' }}
+            />
+            <input
+              value={resultForm.winner}
+              onChange={(e) => setResultForm((prev) => ({ ...prev, winner: e.target.value }))}
+              placeholder="Winner team (optional)"
+              style={{ borderColor: '#c50000' }}
+            />
+            <button className="btn btn-primary" type="submit" style={{ background: 'linear-gradient(135deg, #c50000, #ffc107)' }}>
+              ✅ Update Result
+            </button>
+          </form>
+        </div>
       </section>
 
       {status && (
-        <div className="panel">
-          <p className="message-text">{status}</p>
+        <div className="panel" style={{ marginTop: '30px', backgroundImage: 'url(https://images.unsplash.com/photo-1516321318423-f06c6e504b00?w=1200&h=200&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(13, 13, 13, 0.92)' }}></div>
+          <p className="message-text" style={{ position: 'relative', zIndex: 1, color: '#ffc107', fontWeight: '600' }}>
+            {status.includes('success') || status.includes('published') || status.includes('updated') || status.includes('created') ? '✅' : '⚠️'} {status}
+          </p>
         </div>
       )}
     </div>

@@ -48,10 +48,11 @@ const Tournaments: React.FC = () => {
 
   return (
     <div className="tournaments-page page-enter">
-      <section className="panel page-header">
-        <div>
-          <p className="eyebrow">Discover</p>
-          <h1>Tournaments</h1>
+      <section className="panel page-header" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1538481143235-5d630da30f33?w=1200&h=400&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', minHeight: '250px' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(13, 13, 13, 0.92), rgba(26, 26, 26, 0.92))' }}></div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <p className="eyebrow" style={{ color: '#ffc107' }}>Discover</p>
+          <h1 style={{ color: '#ffffff' }}>Tournaments</h1>
         </div>
         <input
           className="search-input"
@@ -59,6 +60,7 @@ const Tournaments: React.FC = () => {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name or location"
           aria-label="Search tournaments"
+          style={{ position: 'relative', zIndex: 1 }}
         />
       </section>
 

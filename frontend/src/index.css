@@ -1,21 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
 :root {
-  --bg: #090f17;
-  --bg-elev: #101a2a;
-  --panel: #111d31;
-  --panel-soft: #17263f;
-  --line: #2a3c5e;
-  --text: #e9f0ff;
-  --muted: #95a7c7;
-  --accent: #2de2e6;
-  --accent-strong: #19bfc4;
-  --accent-warm: #ffd166;
-  --danger: #ff6b6b;
-  --success: #41d78f;
+  --bg: #0d0d0d;
+  --bg-elev: #1a1a1a;
+  --panel: #1f1f1f;
+  --panel-soft: #2a2a2a;
+  --line: #3a3a3a;
+  --text: #ffffff;
+  --muted: #cccccc;
+  --accent: #c50000;
+  --accent-strong: #ff0000;
+  --accent-warm: #ffc107;
+  --danger: #ff0000;
+  --success: #4caf50;
   --radius: 16px;
   --radius-tight: 10px;
-  --shadow: 0 18px 40px rgba(1, 6, 16, 0.45);
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.75);
 }
 
 *,
@@ -36,9 +36,9 @@ body {
   color: var(--text);
   font-family: "IBM Plex Sans", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background:
-    radial-gradient(circle at 88% -10%, rgba(45, 226, 230, 0.16) 0%, transparent 35%),
-    radial-gradient(circle at 15% -8%, rgba(255, 209, 102, 0.12) 0%, transparent 30%),
-    linear-gradient(165deg, #050a11 0%, #0a1320 38%, #060d17 100%);
+    radial-gradient(circle at 88% -10%, rgba(197, 0, 0, 0.16) 0%, transparent 35%),
+    radial-gradient(circle at 15% -8%, rgba(255, 193, 7, 0.12) 0%, transparent 30%),
+    linear-gradient(165deg, #1a1a1a 0%, #1a1a1a 38%, #0f0f0f 100%);
   overflow-x: hidden;
 }
 
@@ -88,7 +88,7 @@ p {
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 14px;
-  background: linear-gradient(145deg, rgba(13, 24, 42, 0.9), rgba(8, 17, 30, 0.95));
+  background: linear-gradient(145deg, rgba(30, 30, 30, 0.95), rgba(20, 20, 20, 0.98));
   box-shadow: var(--shadow);
   backdrop-filter: blur(10px);
 }
@@ -1345,14 +1345,23 @@ textarea:focus {
 .carousel-container {
   margin-top: 20px;
   margin-bottom: 30px;
+  position: relative;
 }
 
 .carousel-slide {
   position: relative;
   height: 400px;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
   background: linear-gradient(135deg, rgba(20, 42, 68, 0.95), rgba(13, 26, 45, 0.98));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(197, 0, 0, 0.2);
+  border: 2px solid rgba(197, 0, 0, 0.3);
+  transition: all 300ms ease;
+}
+
+.carousel-slide:hover {
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.8), 0 0 50px rgba(197, 0, 0, 0.4);
+  border-color: rgba(197, 0, 0, 0.6);
 }
 
 .carousel-image {
@@ -1360,6 +1369,13 @@ textarea:focus {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 500ms cubic-bezier(0.4, 0, 0.2, 1), filter 500ms ease;
+  filter: brightness(0.95) contrast(1.05);
+}
+
+.carousel-slide:hover .carousel-image {
+  transform: scale(1.08);
+  filter: brightness(1) contrast(1.1);
 }
 
 .carousel-overlay {
@@ -1367,12 +1383,45 @@ textarea:focus {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.7) 60%, rgba(0, 0, 0, 0.9) 100%);
+  top: 0;
+  background: linear-gradient(
+    180deg, 
+    rgba(0, 0, 0, 0) 0%, 
+    rgba(0, 0, 0, 0.2) 40%,
+    rgba(0, 0, 0, 0.6) 65%, 
+    rgba(13, 13, 13, 0.95) 100%
+  );
   padding: 30px 20px;
   color: white;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: 12px;
+  z-index: 5;
+}
+
+.carousel-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg, 
+    rgba(197, 0, 0, 0.1) 0%, 
+    transparent 50%,
+    rgba(255, 193, 7, 0.05) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+  animation: overlayShimmer 3s ease-in-out infinite;
+}
+
+@keyframes overlayShimmer {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1.2;
+  }
 }
 
 .carousel-title {
@@ -1380,6 +1429,8 @@ textarea:focus {
   font-size: clamp(1.5rem, 3vw, 2.2rem);
   font-weight: 700;
   color: #ffffff;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+  animation: slideUp 600ms ease both;
 }
 
 .carousel-description {
@@ -1387,12 +1438,36 @@ textarea:focus {
   font-size: 0.95rem;
   color: #e0e0e0;
   max-width: 500px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  animation: slideUp 600ms ease both 100ms;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .carousel-cta {
   align-self: flex-start;
   padding: 10px 20px;
   margin-top: 10px;
+  animation: slideUp 600ms ease both 200ms;
+  box-shadow: 0 8px 20px rgba(197, 0, 0, 0.3);
+  border: 2px solid rgba(255, 193, 7, 0.5) !important;
+  background: linear-gradient(135deg, rgba(197, 0, 0, 0.8), rgba(255, 193, 7, 0.6)) !important;
+  color: #ffffff !important;
+}
+
+.carousel-cta:hover {
+  box-shadow: 0 12px 30px rgba(197, 0, 0, 0.5);
+  transform: translateY(-2px);
+  border-color: rgba(255, 193, 7, 0.8) !important;
 }
 
 .carousel-btn {
@@ -1401,21 +1476,30 @@ textarea:focus {
   transform: translateY(-50%);
   width: 50px;
   height: 50px;
-  border: none;
+  border: 2px solid rgba(197, 0, 0, 0.5);
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.5);
-  color: white;
+  color: #ffc107;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 200ms ease;
   z-index: 10;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .carousel-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
-  transform: translateY(-50%) scale(1.1);
+  background: rgba(197, 0, 0, 0.7);
+  color: #ffffff;
+  border-color: rgba(255, 193, 7, 0.8);
+  transform: translateY(-50%) scale(1.15);
+  box-shadow: 0 8px 20px rgba(197, 0, 0, 0.5);
+}
+
+.carousel-btn:active {
+  transform: translateY(-50%) scale(0.95);
 }
 
 .carousel-btn-prev {
@@ -1428,26 +1512,37 @@ textarea:focus {
 
 .carousel-indicators {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
-  margin-top: 16px;
+  margin-top: 20px;
   padding: 0 20px;
+  animation: slideUp 600ms ease both 300ms;
 }
 
 .carousel-indicator {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: none;
-  background: rgba(45, 226, 230, 0.3);
+  border: 2px solid rgba(197, 0, 0, 0.5);
+  background: rgba(197, 0, 0, 0.2);
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px rgba(197, 0, 0, 0.2);
+}
+
+.carousel-indicator:hover {
+  background: rgba(197, 0, 0, 0.4);
+  border-color: rgba(255, 193, 7, 0.6);
+  transform: scale(1.2);
+  box-shadow: 0 0 12px rgba(197, 0, 0, 0.4);
 }
 
 .carousel-indicator.active {
-  background: rgba(45, 226, 230, 0.8);
+  background: linear-gradient(135deg, #c50000, #ffc107);
+  border-color: #ffc107;
   width: 32px;
   border-radius: 6px;
+  box-shadow: 0 0 20px rgba(197, 0, 0, 0.6), 0 0 10px rgba(255, 193, 7, 0.4);
 }
 
 .carousel-empty {
@@ -1455,10 +1550,21 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(20, 42, 68, 0.95), rgba(13, 26, 45, 0.98));
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(20, 26, 36, 0.98), rgba(13, 18, 28, 0.99));
+  border-radius: 16px;
   color: #95a7c7;
   font-size: 1.1rem;
+  border: 2px dashed rgba(197, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.carousel-empty::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(197, 0, 0, 0.05), rgba(255, 193, 7, 0.05));
+  pointer-events: none;
 }
 
 /* ==================== TOURNAMENT CARDS GRID ==================== */

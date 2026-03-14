@@ -38,21 +38,21 @@ const Home: React.FC = () => {
       id: '1',
       title: 'Championship Series 2026',
       description: 'Be part of the biggest tournament of the year. Compete for glory and prizes!',
-      image: 'https://via.placeholder.com/1200x400?text=Championship+Series+2026',
+      image: 'https://images.unsplash.com/photo-1511379938547-c1f69b13d835?w=1200&h=400&fit=crop&q=80',
       link: '/tournaments'
     },
     {
       id: '2',
       title: 'Weekly Grind Tournament',
       description: 'Join us every week for exciting matches and instant rewards.',
-      image: 'https://via.placeholder.com/1200x400?text=Weekly+Grind+Tournament',
+      image: 'https://images.unsplash.com/photo-1538481143235-5d630da30f33?w=1200&h=400&fit=crop&q=80',
       link: '/tournaments'
     },
     {
       id: '3',
       title: 'New Players Welcome',
       description: 'First time competing? Join our beginner-friendly tournaments and learn the ropes.',
-      image: 'https://via.placeholder.com/1200x400?text=New+Players+Welcome',
+      image: 'https://images.unsplash.com/photo-1552109211-7649a8bfb54e?w=1200&h=400&fit=crop&q=80',
       link: '/tournaments'
     }
   ];
@@ -106,13 +106,19 @@ const Home: React.FC = () => {
 
       {/* Stats Section */}
       <section style={{ marginTop: '40px' }} className="stats-grid stats-grid-2col">
-        <article className="stat-card panel">
-          <p className="stat-label">Live Tournaments</p>
-          <p className="stat-value">{liveCount}</p>
+        <article className="stat-card panel" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1552109211-7649a8bfb54e?w=600&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }}></div>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p className="stat-label">🔴 Live Tournaments</p>
+            <p className="stat-value">{liveCount}</p>
+          </div>
         </article>
-        <article className="stat-card panel">
-          <p className="stat-label">Total Tournaments</p>
-          <p className="stat-value">{count}</p>
+        <article className="stat-card panel" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1511379938547-c1f69b13d835?w=600&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }}></div>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p className="stat-label">🏆 Total Tournaments</p>
+            <p className="stat-value">{count}</p>
+          </div>
         </article>
       </section>
 
@@ -120,14 +126,17 @@ const Home: React.FC = () => {
       <section className="quick-links panel" style={{ marginTop: '30px' }}>
         <h2>Quick Actions</h2>
         <div className="quick-links-grid">
-          <Link to="/profile" className="quick-link-card">
-            👤 Manage Your Profile
+          <Link to="/profile" className="quick-link-card" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(197, 0, 0, 0.8), rgba(255, 193, 7, 0.8))' }}></div>
+            <span style={{ position: 'relative', zIndex: 1, fontSize: '18px', fontWeight: '600' }}>👤 Manage Your Profile</span>
           </Link>
-          <Link to="/tournaments" className="quick-link-card">
-            🎮 Explore All Tournaments
+          <Link to="/tournaments" className="quick-link-card" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1538481143235-5d630da30f33?w=300&h=200&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(197, 0, 0, 0.8), rgba(255, 193, 7, 0.8))' }}></div>
+            <span style={{ position: 'relative', zIndex: 1, fontSize: '18px', fontWeight: '600' }}>🎮 Explore All Tournaments</span>
           </Link>
-          <Link to="/ocr" className="quick-link-card">
-            📄 Extract Text from Images
+          <Link to="/ocr" className="quick-link-card" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1577720643272-265a27e92e20?w=300&h=200&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(197, 0, 0, 0.8), rgba(255, 193, 7, 0.8))' }}></div>
+            <span style={{ position: 'relative', zIndex: 1, fontSize: '18px', fontWeight: '600' }}>📄 Extract Text from Images</span>
           </Link>
         </div>
       </section>

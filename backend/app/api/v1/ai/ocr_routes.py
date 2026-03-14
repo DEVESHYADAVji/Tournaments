@@ -47,7 +47,7 @@ def _repo_root() -> Path:
 
 
 def _data_dir() -> Path:
-    path = _repo_root() / "services" / "ai-chatbot" / "data"
+    path = _repo_root() / "services" / "ai-imgtotext" / "data"
     path.mkdir(parents=True, exist_ok=True)
     return path
 

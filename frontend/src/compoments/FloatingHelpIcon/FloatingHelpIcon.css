@@ -1,0 +1,47 @@
+.floating-help-icon {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c50000 0%, #ffc107 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  z-index: 999;
+  font-size: 28px;
+}
+
+.floating-help-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(197, 0, 0, 0.4);
+}
+
+.floating-help-icon:active {
+  transform: scale(0.95);
+}
+
+.floating-help-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+@media (max-width: 768px) {
+  .floating-help-icon {
+    bottom: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .floating-help-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+}
