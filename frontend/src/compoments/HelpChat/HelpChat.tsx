@@ -19,17 +19,29 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [documentLoaded, setDocumentLoaded] = useState(false);
-  const [uploadingDoc, setUploadingDoc] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const initializedRef = useRef(false);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (!isOpen || loading || !documentLoaded) return;
+
+    const focusTimer = window.setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(focusTimer);
+  }, [isOpen, loading, documentLoaded, messages.length]);
+
   // Check if document is loaded on mount
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     checkDocumentStatus();
   }, []);
 
@@ -41,8 +53,10 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
 
       if (data.document_loaded && messages.length === 0) {
         addBotMessage(
-          `Welcome! I have access to "${data.current_document}". Ask me anything about the website or services!`
+          'Welcome! How can I help you today?'
         );
+      } else if (!data.document_loaded && messages.length === 0) {
+        addBotMessage('Help information is not available right now. Please try again later.');
       }
     } catch (error) {
       console.error('Failed to check document status:', error);
@@ -59,45 +73,11 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
     setMessages((prev) => [...prev, message]);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingDoc(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch(`${VITE_HELP_CHATBOT_BASE_URL}/upload-document`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to upload document');
-      }
-
-      const data = await response.json();
-      setDocumentLoaded(true);
-      addBotMessage(
-        `Great! I've loaded "${data.filename}". Now I can answer your questions based on this document. What would you like to know?`
-      );
-    } catch (error) {
-      addBotMessage(
-        `Sorry, I couldn't load the document. ${error instanceof Error ? error.message : 'Please try again.'}`
-      );
-    } finally {
-      setUploadingDoc(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
     if (!documentLoaded) {
-      addBotMessage('Please upload a document first before asking questions.');
+      addBotMessage('Help information is not available right now. Please try again later.');
       return;
     }
 
@@ -162,7 +142,7 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
           {messages.length === 0 && !documentLoaded && (
             <div className="welcome-message">
               <p>Welcome to Help & Support!</p>
-              <p>Upload a document to get started.</p>
+              <p>Help information is not available right now.</p>
             </div>
           )}
           {messages.map((msg) => (
@@ -175,27 +155,9 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
         </div>
 
         <div className="help-chat-footer">
-          {!documentLoaded && (
-            <div className="file-upload-section">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".pdf,.docx,.doc,.txt"
-                disabled={uploadingDoc}
-              />
-              <button
-                className="upload-btn"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingDoc}
-              >
-                {uploadingDoc ? 'Uploading...' : 'Upload Document'}
-              </button>
-            </div>
-          )}
-
           <div className="input-section">
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -203,7 +165,7 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
               placeholder={
                 documentLoaded
                   ? 'Ask your question...'
-                  : 'Upload a document first...'
+                  : 'Help document not available...'
               }
               disabled={!documentLoaded || loading}
             />

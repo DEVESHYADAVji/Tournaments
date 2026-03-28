@@ -23,7 +23,7 @@ class OcrResponse(BaseModel):
 class AISettings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "deepseek-v3.1:671b-cloud"
-    ocr_model: str = "deepseek-v3.1:671b-cloud"
+    ocr_model: str = "qwen3-vl:235b-cloud"
     ollama_timeout_seconds: int = 180
     max_image_size_mb: int = 10
 
@@ -128,7 +128,7 @@ async def extract_text_from_image(file: UploadFile = File(...)):
                     detail=(
                         f"OCR model '{ollama_model}' is not vision-capable. "
                         "Set AI_CHATBOT_OCR_MODEL to a vision model "
-                        "(for example: qwen2.5vl:7b, llava:13b, or llama3.2-vision)."
+                        "(for example: qwen3-vl:235b-cloud, llava:13b, or llama3.2-vision)."
                     ),
                 )
 

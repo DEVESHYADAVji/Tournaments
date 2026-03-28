@@ -83,7 +83,8 @@ SQLALCHEMY_DATABASE_URI=mysql+asyncmy://root:password@127.0.0.1:3306/tournaments
 SECRET_KEY=change-this-in-real-environments
 AI_CHATBOT_OLLAMA_BASE_URL=http://localhost:11434
 AI_CHATBOT_OLLAMA_MODEL=deepseek-v3.1:671b-cloud
-AI_CHATBOT_OCR_MODEL=qwen2.5vl:7b
+AI_CHATBOT_OCR_MODEL=qwen3-vl:235b-cloud
+AI_CHATBOT_HELP_CHATBOT_TEMPERATURE=0.05
 ```
 
 Create `frontend/.env` for frontend settings:
@@ -219,30 +220,28 @@ Service default URL: `http://localhost:8002`
    AI_CHATBOT_OLLAMA_BASE_URL=http://localhost:11434
    AI_CHATBOT_OLLAMA_MODEL=deepseek-v3.1:671b-cloud
    AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS=180
+   AI_CHATBOT_HELP_CHATBOT_TEMPERATURE=0.05
    VITE_HELP_CHATBOT_BASE_URL=http://localhost:8002
    ```
 
 ### Key Features:
 
-- **Document Upload:** Support for PDF, DOCX, and TXT files
-- **Strict Context:** Answers only from document content (temperature: 0.1)
+- **Backend-Managed Help Document:** The chatbot reads `services/ai-helpchat/Help&Support.pdf`
+- **Strict Context:** Answers only from document content (default temperature: 0.05)
 - **Smart Matching:** Relevance-based chunk retrieval
 - **Floating UI:** Help icon in bottom-right corner with popup chat
 
 ### Key Endpoints:
 
 - `GET /health` - Service status and loaded document info
-- `POST /upload-document` - Upload a document (multipart/form-data)
 - `POST /ask` - Ask a question about the document
-- `POST /clear-document` - Clear the loaded document
 
 ### Frontend Integration:
 
 The help chatbot is integrated into the frontend as a floating help icon. Users can:
 1. Click the floating help icon (bottom-right corner)
-2. Upload a document (PDF/DOCX/TXT)
-3. Ask questions about the document content
-4. Receive accurate answers based strictly on the document
+2. Ask questions about the backend-managed help document
+3. Receive accurate answers based strictly on the document
 
 ## Notes and Best Practices
 
@@ -256,5 +255,5 @@ The help chatbot is integrated into the frontend as a floating help icon. Users 
 
 - OCR needs a vision-capable Ollama model.
 - `deepseek-v3.1:671b-cloud` is not vision-capable, so it can return unrelated fabricated text for image OCR.
-- Set `AI_CHATBOT_OCR_MODEL` to a vision model (example: `qwen2.5vl:7b`) and pull it:
-  - `ollama pull qwen2.5vl:7b`
+- Set `AI_CHATBOT_OCR_MODEL` to a vision model (example: `qwen3-vl:235b-cloud`) and pull it:
+  - `ollama pull qwen3-vl:235b-cloud`

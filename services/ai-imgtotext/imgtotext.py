@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .prompts import OCR_SYSTEM_PROMPT, OCR_USER_PROMPT
-from .settings import settings
+from ..settings import settings
 
 
 app = FastAPI(title="AI Chatbot Service")
