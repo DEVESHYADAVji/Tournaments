@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 	# App
 	APP_NAME: str = "Tournaments API"
 	DEBUG: bool = False
-	API_V1_STR: str = "/api/v1"
+	API_PREFIX: str = "/api"
 
 	# Security
 	SECRET_KEY: str = "changeme"

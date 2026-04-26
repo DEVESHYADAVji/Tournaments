@@ -1,10 +1,7 @@
 .help-chat-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(5, 7, 10, 0.62);
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -23,15 +20,17 @@
 }
 
 .help-chat-modal {
-  background: white;
-  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(20, 25, 36, 0.98), rgba(11, 14, 21, 0.98));
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 420px;
   height: 600px;
-  box-shadow: 0 5px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
   animation: slideUp 0.3s ease;
+  overflow: hidden;
 }
 
 @keyframes slideUp {
@@ -58,10 +57,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
-  background: linear-gradient(135deg, #c50000 0%, #ffc107 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff7d47 100%);
   color: white;
-  border-radius: 12px 12px 0 0;
 }
 
 .help-chat-header h2 {
@@ -96,7 +94,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: #f9f9f9;
+  background: rgba(8, 10, 15, 0.55);
 }
 
 .help-chat-messages::-webkit-scrollbar {
@@ -108,12 +106,12 @@
 }
 
 .help-chat-messages::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: rgba(255, 255, 255, 0.18);
   border-radius: 3px;
 }
 
 .help-chat-messages::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .welcome-message {
@@ -123,7 +121,7 @@
   justify-content: center;
   height: 100%;
   text-align: center;
-  color: #666;
+  color: #98a2b6;
 }
 
 .welcome-message p {
@@ -134,7 +132,7 @@
 .welcome-message p:first-child {
   font-weight: 600;
   font-size: 16px;
-  color: #333;
+  color: #f6f8fc;
 }
 
 .message {
@@ -159,7 +157,7 @@
 }
 
 .message.message-user .message-content {
-  background: linear-gradient(135deg, #c50000 0%, #ffc107 100%);
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff7d47 100%);
   color: white;
   border-radius: 14px 14px 4px 14px;
 }
@@ -169,9 +167,9 @@
 }
 
 .message.message-bot .message-content {
-  background: white;
-  color: #333;
-  border: 1px solid #e0e0e0;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f6f8fc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px 14px 14px 4px;
 }
 
@@ -185,48 +183,15 @@
 
 .message-time {
   font-size: 12px;
-  color: #999;
+  color: #98a2b6;
   margin-top: 4px;
   padding: 0 4px;
 }
 
 .help-chat-footer {
   padding: 12px;
-  border-top: 1px solid #e0e0e0;
-  background: white;
-  border-radius: 0 0 12px 12px;
-}
-
-.file-upload-section {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.file-upload-section input[type='file'] {
-  display: none;
-}
-
-.file-upload-section .upload-btn {
-  flex: 1;
-  padding: 8px 12px;
-  background: #f0f0f0;
-  border: 2px dashed #c50000;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: #c50000;
-  transition: all 0.2s ease;
-}
-
-.file-upload-section .upload-btn:hover:not(:disabled) {
-  background: #f9f9f9;
-}
-
-.file-upload-section .upload-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 16, 24, 0.98);
 }
 
 .input-section {
@@ -238,31 +203,32 @@
 .input-section input {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   font-size: 14px;
   font-family: inherit;
-  resize: none;
   outline: none;
   transition: border-color 0.2s ease;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f6f8fc;
 }
 
 .input-section input:focus {
-  border-color: #c50000;
+  border-color: rgba(255, 90, 31, 0.45);
 }
 
 .input-section input:disabled {
-  background: #f5f5f5;
+  background: rgba(255, 255, 255, 0.03);
   cursor: not-allowed;
 }
 
 .input-section input::placeholder {
-  color: #999;
+  color: #98a2b6;
 }
 
 .input-section .send-btn {
   padding: 10px 16px;
-  background: linear-gradient(135deg, #c50000 0%, #ffc107 100%);
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff7d47 100%);
   color: white;
   border: none;
   border-radius: 20px;

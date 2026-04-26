@@ -32,7 +32,7 @@ Full-stack tournament management project with a FastAPI backend and a React + Vi
 Tournaments/
 |-- backend/
 |   |-- app/
-|   |   |-- api/             # API routes (v1: auth, tournaments, ocr, ai)
+|   |   |-- api/             # API routes grouped by feature (auth, tournaments, ai)
 |   |   |-- core/            # config, database setup
 |   |   |-- models/          # SQLAlchemy ORM models
 |   |   `-- main.py          # FastAPI app entry
@@ -91,7 +91,7 @@ Create `frontend/.env` for frontend settings:
 
 ```env
 VITE_APP_NAME=Tournaments
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_BASE_URL=http://localhost:8000/api
 ```
 
 Important: use `frontend/.env.local` (or `frontend/.env`) and restart the frontend dev server after changes.

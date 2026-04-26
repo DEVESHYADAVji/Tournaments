@@ -28,8 +28,9 @@ const App: React.FC = () => {
   const [modalMessage, setModalMessage] = React.useState('');
   const [sessionVersion, setSessionVersion] = React.useState(0);
 
+  void sessionVersion;
   const loggedIn = isAuthenticated();
-  const user = React.useMemo(() => getStoredUser(), [sessionVersion]);
+  const user = getStoredUser();
 
   const openLoginModal = () => {
     setMode('login');
@@ -107,31 +108,33 @@ const App: React.FC = () => {
       </div>
 
       {showAuthModal ? (
-        <div className="modal-backdrop" role="presentation" onClick={() => setShowAuthModal(false)}>
+        <div className="auth-modal-backdrop" role="presentation" onClick={() => setShowAuthModal(false)}>
           <section
-            className="modal-card panel page-enter"
+            className="auth-modal panel page-enter"
             role="dialog"
             aria-modal="true"
             aria-label="Authentication"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="panel-inner">
             {mode === 'login' ? (
               <>
-                <p className="eyebrow">Welcome Back</p>
-                <h2>Login</h2>
+                <p className="section-label">Welcome back</p>
+                <h2>Enter your match lobby</h2>
+                <p>Sign in as a player or admin to manage tournaments, registrations, and match data.</p>
                 {modalMessage ? <p className="message-text">{modalMessage}</p> : null}
-                <form className="auth-form" onSubmit={handleLogin}>
+                <form className="form-stack" onSubmit={handleLogin}>
                   <div className="auth-switch">
                     <button
                       type="button"
-                      className={`mode-btn ${role === 'user' ? 'active' : ''}`}
+                      className={`btn ${role === 'user' ? 'btn-primary' : 'btn-secondary'}`}
                       onClick={() => setRole('user')}
                     >
-                      User
+                      Player
                     </button>
                     <button
                       type="button"
-                      className={`mode-btn ${role === 'admin' ? 'active' : ''}`}
+                      className={`btn ${role === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
                       onClick={() => setRole('admin')}
                     >
                       Admin
@@ -155,19 +158,20 @@ const App: React.FC = () => {
                     {busy ? 'Please wait...' : `Login as ${role}`}
                   </button>
                 </form>
-                <p className="auth-note">
-                  New user?{' '}
-                  <button type="button" className="auth-link-btn" onClick={() => setMode('register')}>
-                    Register here
+                <p>
+                  New here?{' '}
+                  <button type="button" className="btn btn-linklike" onClick={() => setMode('register')}>
+                    Create an account
                   </button>
                 </p>
               </>
             ) : (
               <>
-                <p className="eyebrow">Create Account</p>
-                <h2>Register</h2>
+                <p className="section-label">Create account</p>
+                <h2>Start competing in minutes</h2>
+                <p>Register once, then join tournaments, track your entries, and manage your profile from one place.</p>
                 {modalMessage ? <p className="message-text">{modalMessage}</p> : null}
-                <form className="auth-form" onSubmit={handleRegister}>
+                <form className="form-stack" onSubmit={handleRegister}>
                   <input
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
@@ -192,17 +196,20 @@ const App: React.FC = () => {
                     {busy ? 'Please wait...' : 'Register'}
                   </button>
                 </form>
-                <p className="auth-note">
+                <p>
                   Already have an account?{' '}
-                  <button type="button" className="auth-link-btn" onClick={() => setMode('login')}>
-                    Login here
+                  <button type="button" className="btn btn-linklike" onClick={() => setMode('login')}>
+                    Sign in
                   </button>
                 </p>
               </>
             )}
-            <button type="button" className="btn btn-ghost modal-close-btn" onClick={() => setShowAuthModal(false)}>
-              Close
-            </button>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowAuthModal(false)}>
+                Close
+              </button>
+            </div>
+            </div>
           </section>
         </div>
       ) : null}

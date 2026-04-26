@@ -1,4 +1,5 @@
 import httpClient from '../../services/http';
+import type { AxiosError } from 'axios';
 
 // Types
 export interface LoginRequest {
@@ -6,17 +7,49 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface StoredUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  profile_icon?: number | null;
+}
+
+interface AuthApiPayload {
+  success?: boolean;
+  message?: string;
+  token?: string;
+  user?: Partial<StoredUser>;
+  data?: {
+    token: string;
+    user: StoredUser;
+  };
+}
+
+interface ApiErrorShape {
+  detail?: string;
+}
+
+const normalizeStoredUser = (user?: Partial<StoredUser> | null): StoredUser | undefined => {
+  if (!user?.id || !user.email) {
+    return undefined;
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name || 'User',
+    role: user.role || 'user',
+    profile_icon: user.profile_icon ?? null,
+  };
+};
+
 export interface AuthResponse {
   success: boolean;
   message: string;
   data?: {
     token: string;
-    user: {
-      id: string;
-      email: string;
-      name: string;
-      role: string;
-    };
+    user: StoredUser;
   };
 }
 
@@ -34,12 +67,7 @@ export interface RegisterRequest {
 export interface RegisterResponse {
   success: boolean;
   message: string;
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-  };
+  user?: StoredUser;
 }
 
 // API endpoints
@@ -71,15 +99,15 @@ export const loginAsUser = async (credentials: LoginRequest): Promise<AuthRespon
 export const register = async (payload: RegisterRequest): Promise<RegisterResponse> => {
   try {
     const response = await httpClient.post(AUTH_ENDPOINTS.REGISTER, payload);
-    const body: any = response.data ?? {};
+    const body = (response.data ?? {}) as AuthApiPayload;
     return {
       success: Boolean(body.success),
       message: body.message || (body.success ? 'Registration successful' : 'Registration failed'),
-      user: body.user,
+      user: normalizeStoredUser(body.user),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     const message =
-      error?.response?.data?.detail ||
+      (error as AxiosError<ApiErrorShape>)?.response?.data?.detail ||
       'Unable to register. Please verify details and try again.';
     return {
       success: false,
@@ -91,7 +119,7 @@ export const register = async (payload: RegisterRequest): Promise<RegisterRespon
 const loginWithEndpoint = async (endpoint: string, credentials: LoginRequest): Promise<AuthResponse> => {
   try {
     const response = await httpClient.post(endpoint, credentials);
-    const payload: any = response.data ?? {};
+    const payload = (response.data ?? {}) as AuthApiPayload;
 
     const normalized: AuthResponse = {
       success: Boolean(payload.success),
@@ -101,14 +129,17 @@ const loginWithEndpoint = async (endpoint: string, credentials: LoginRequest): P
 
     // Backend currently returns { success, token, user, expires_at }
     if (!normalized.data && payload.token && payload.user) {
+      const normalizedUser = normalizeStoredUser(payload.user);
+      if (!normalizedUser) {
+        return {
+          success: false,
+          message: 'Login response was missing required user details.',
+        };
+      }
+
       normalized.data = {
         token: payload.token,
-        user: {
-          id: payload.user.id,
-          email: payload.user.email,
-          name: payload.user.name || 'User',
-          role: payload.user.role || 'user',
-        },
+        user: normalizedUser,
       };
     }
 
@@ -120,7 +151,7 @@ const loginWithEndpoint = async (endpoint: string, credentials: LoginRequest): P
     return normalized;
   } catch (error) {
     console.error('Login failed:', error);
-    const apiDetail = (error as any)?.response?.data?.detail;
+    const apiDetail = (error as AxiosError<ApiErrorShape>)?.response?.data?.detail;
     if (typeof apiDetail === 'string' && apiDetail.trim()) {
       return {
         success: false,
@@ -178,7 +209,7 @@ export const clearSession = (): void => {
 export const getStoredUser = () => {
   try {
     const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    return user ? (JSON.parse(user) as StoredUser) : null;
   } catch {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');

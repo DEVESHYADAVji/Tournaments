@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import ProfileIconSelector from '../compoments/ProfileIconSelector/ProfileIconSelector';
+import { getProfileIcon } from '../config/profileIcons';
 import { getStoredUser, isAuthenticated, logout } from '../features/auth/auth.api';
 import { getMyRegistrations, type MyRegistration } from '../features/tournaments/tournament.api';
 
@@ -14,8 +15,6 @@ const Profile: React.FC = () => {
   const [registrations, setRegistrations] = React.useState<MyRegistration[]>([]);
 
   const user = {
-    name,
-    email,
     tournamentsParticipated: registrations.length,
     loggedIn: isAuthenticated(),
   };
@@ -60,14 +59,22 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div className="profile-page page-enter">
-      <h1>My Profile</h1>
-      <div className="profile-info panel" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=1200&h=400&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative', minHeight: '250px' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(13, 13, 13, 0.95), rgba(26, 26, 26, 0.95))' }}></div>
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <p className="profile-status" style={{ fontSize: '16px', color: '#ffc107', fontWeight: '600' }}>{user.loggedIn ? '✅ Authenticated' : '⚠️ Guest Mode'}</p>
-          <div className="profile-field">
-            <label htmlFor="profile-name">Name</label>
+    <div className="section-stack page-enter">
+      <section className="hero-surface">
+        <div className="hero-inner">
+          <p className="section-label">Profile</p>
+          <h1 className="page-title">Player identity and registrations</h1>
+          <p>Keep account details simple, editable, and easy to follow for new developers reading the codebase.</p>
+        </div>
+      </section>
+
+      <section className="profile-layout">
+        <article className="tool-card profile-card">
+          <div className="profile-avatar-large" dangerouslySetInnerHTML={{ __html: getProfileIcon(profileIcon) }} />
+          <span className="profile-status">{user.loggedIn ? 'Authenticated' : 'Guest mode'}</span>
+
+          <div className="field">
+            <label className="field-label" htmlFor="profile-name">Name</label>
             <input
               id="profile-name"
               value={name}
@@ -75,8 +82,9 @@ const Profile: React.FC = () => {
               disabled={!editMode}
             />
           </div>
-          <div className="profile-field">
-            <label htmlFor="profile-email">Email</label>
+
+          <div className="field">
+            <label className="field-label" htmlFor="profile-email">Email</label>
             <input
               id="profile-email"
               type="email"
@@ -85,74 +93,81 @@ const Profile: React.FC = () => {
               disabled={!editMode}
             />
           </div>
-          {editMode && (
-            <ProfileIconSelector 
-              selectedIcon={profileIcon}
-              onIconSelect={setProfileIcon}
-            />
-          )}
-          <p style={{ color: '#cccccc', marginTop: '15px' }}>
-            <strong>🏆 Tournaments Participated:</strong> {user.tournamentsParticipated}
-          </p>
-        </div>
-      </div>
 
-      <div className="panel" style={{ marginTop: '30px', backgroundImage: 'url(https://images.unsplash.com/photo-1460647926306-322e0efc209c?w=1200&h=300&fit=crop)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(13, 13, 13, 0.92)' }}></div>
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h3 style={{ color: '#ffc107', marginBottom: '20px' }}>📊 My Registrations</h3>
-          {registrations.length ? (
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Tournament</th>
-                    <th>Game</th>
-                    <th>Team</th>
-                    <th>Points</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {registrations.map((item) => (
-                    <tr key={item.registration_id}>
-                      <td>{item.tournament_name}</td>
-                      <td>{item.game}</td>
-                      <td>{item.team_name}</td>
-                      <td>{item.points}</td>
-                      <td>{item.status}</td>
-                      <td>
-                        <Link to={`/tournaments/${item.tournament_id}`} className="table-link">
-                          Open
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {editMode ? (
+            <ProfileIconSelector selectedIcon={profileIcon} onIconSelect={setProfileIcon} />
+          ) : null}
+
+          <div className="side-stat-card">
+            <span className="meta-label">Registrations</span>
+            <span className="meta-value">{user.tournamentsParticipated}</span>
+          </div>
+
+          <div className="cta-row">
+            {!editMode ? (
+              <button className="btn btn-secondary" onClick={() => setEditMode(true)}>
+                Edit profile
+              </button>
+            ) : (
+              <button className="btn btn-primary" onClick={handleSave}>
+                Save changes
+              </button>
+            )}
+            <button className="btn btn-ghost" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
+          {message ? <p className="message-text">{message}</p> : null}
+        </article>
+
+        <article className="section-card">
+          <div className="section-card-inner">
+            <div className="section-header">
+              <div>
+                <p className="section-label">Entries</p>
+                <h2>My registrations</h2>
+              </div>
             </div>
-          ) : (
-            <p style={{ color: '#95a7c7' }}>No registrations yet. Join tournaments to track progress.</p>
-          )}
-        </div>
-      </div>
-
-      <div className="cta-row" style={{ marginTop: '20px' }}>
-        {!editMode ? (
-          <button className="btn btn-secondary" onClick={() => setEditMode(true)}>
-            Edit Profile
-          </button>
-        ) : (
-          <button className="btn btn-primary" onClick={handleSave}>
-            Save Changes
-          </button>
-        )}
-        <button className="btn btn-ghost" onClick={handleLogout}>
-          Logout
-        </button>
-      </div>
-      {message && <p className="message-text">{message}</p>}
+            {registrations.length ? (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Tournament</th>
+                      <th>Game</th>
+                      <th>Team</th>
+                      <th>Points</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registrations.map((item) => (
+                      <tr key={item.registration_id}>
+                        <td>{item.tournament_name}</td>
+                        <td>{item.game}</td>
+                        <td>{item.team_name}</td>
+                        <td>{item.points}</td>
+                        <td>{item.status}</td>
+                        <td>
+                          <Link to={`/tournaments/${item.tournament_id}`} className="table-link">
+                            Open
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state">
+                <h3>No registrations yet</h3>
+                <p>Join tournaments to track your progress here.</p>
+              </div>
+            )}
+          </div>
+        </article>
+      </section>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { VITE_HELP_CHATBOT_BASE_URL } from '../../config/env';
 import './HelpChat.css';
 
@@ -14,6 +14,15 @@ interface HelpChatProps {
   onClose: () => void;
 }
 
+interface HealthResponse {
+  document_loaded?: boolean;
+}
+
+interface AskResponse {
+  answer?: string;
+  detail?: string;
+}
+
 export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -23,7 +32,44 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const initializedRef = useRef(false);
 
-  // Scroll to bottom when messages change
+  const addBotMessage = React.useCallback((content: string) => {
+    const message: Message = {
+      id: Date.now().toString(),
+      type: 'bot',
+      content,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+    setMessages((prev) => [...prev, message]);
+  }, []);
+
+  const checkDocumentStatus = React.useCallback(async () => {
+    try {
+      const response = await fetch(`${VITE_HELP_CHATBOT_BASE_URL}/health`);
+      const data = (await response.json()) as HealthResponse;
+      const isLoaded = Boolean(data.document_loaded);
+      setDocumentLoaded(isLoaded);
+
+      setMessages((prev) => {
+        if (prev.length > 0) {
+          return prev;
+        }
+
+        return [
+          {
+            id: Date.now().toString(),
+            type: 'bot',
+            content: isLoaded
+              ? 'Welcome! How can I help you today?'
+              : 'Help information is not available right now. Please try again later.',
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ];
+      });
+    } catch (error) {
+      console.error('Failed to check document status:', error);
+    }
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -38,40 +84,11 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
     return () => window.clearTimeout(focusTimer);
   }, [isOpen, loading, documentLoaded, messages.length]);
 
-  // Check if document is loaded on mount
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
-    checkDocumentStatus();
-  }, []);
-
-  const checkDocumentStatus = async () => {
-    try {
-      const response = await fetch(`${VITE_HELP_CHATBOT_BASE_URL}/health`);
-      const data = await response.json();
-      setDocumentLoaded(data.document_loaded);
-
-      if (data.document_loaded && messages.length === 0) {
-        addBotMessage(
-          'Welcome! How can I help you today?'
-        );
-      } else if (!data.document_loaded && messages.length === 0) {
-        addBotMessage('Help information is not available right now. Please try again later.');
-      }
-    } catch (error) {
-      console.error('Failed to check document status:', error);
-    }
-  };
-
-  const addBotMessage = (content: string) => {
-    const message: Message = {
-      id: Date.now().toString(),
-      type: 'bot',
-      content,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-    setMessages((prev) => [...prev, message]);
-  };
+    void checkDocumentStatus();
+  }, [checkDocumentStatus]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -81,11 +98,11 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
       return;
     }
 
-    // Add user message
+    const question = input.trim();
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
-      content: input,
+      content: question,
       timestamp: new Date().toLocaleTimeString(),
     };
     setMessages((prev) => [...prev, userMessage]);
@@ -96,16 +113,16 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
       const response = await fetch(`${VITE_HELP_CHATBOT_BASE_URL}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input }),
+        body: JSON.stringify({ question }),
       });
 
+      const data = (await response.json()) as AskResponse;
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to get answer');
+        throw new Error(data.detail || 'Failed to get answer');
       }
 
-      const data = await response.json();
-      addBotMessage(data.answer);
+      addBotMessage(data.answer || 'No answer was returned.');
     } catch (error) {
       addBotMessage(
         `Sorry, I encountered an error. ${error instanceof Error ? error.message : 'Please try again.'}`
@@ -115,10 +132,10 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void handleSendMessage();
     }
   };
 
@@ -129,22 +146,18 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
       <div className="help-chat-modal">
         <div className="help-chat-header">
           <h2>Help & Support</h2>
-          <button
-            className="close-btn"
-            onClick={onClose}
-            aria-label="Close chat"
-          >
+          <button className="close-btn" onClick={onClose} aria-label="Close chat">
             ×
           </button>
         </div>
 
         <div className="help-chat-messages">
-          {messages.length === 0 && !documentLoaded && (
+          {messages.length === 0 && !documentLoaded ? (
             <div className="welcome-message">
               <p>Welcome to Help & Support!</p>
               <p>Help information is not available right now.</p>
             </div>
-          )}
+          ) : null}
           {messages.map((msg) => (
             <div key={msg.id} className={`message message-${msg.type}`}>
               <div className="message-content">{msg.content}</div>
@@ -161,16 +174,12 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={
-                documentLoaded
-                  ? 'Ask your question...'
-                  : 'Help document not available...'
-              }
+              onKeyDown={handleKeyPress}
+              placeholder={documentLoaded ? 'Ask your question...' : 'Help document not available...'}
               disabled={!documentLoaded || loading}
             />
             <button
-              onClick={handleSendMessage}
+              onClick={() => void handleSendMessage()}
               disabled={!documentLoaded || loading || !input.trim()}
               className="send-btn"
             >

@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import time
 
-from .api.router import api_router, v1_router
-from .api.v1.auth.auth_routes import seed_default_auth_users
-from .api.v1.tournaments.tournament_routes import seed_sample_tournaments
+from .api.router import router as api_router
+from .api.auth.auth_routes import seed_default_auth_users
+from .api.tournaments.tournament_routes import seed_sample_tournaments
 from .core.database import init_db
 from .models import announcement as _announcement_model  # noqa: F401
 from .models import auth_user as _auth_user_model  # noqa: F401
@@ -64,9 +64,8 @@ async def health():
 		"env": os.environ.get("ENV", os.environ.get("PYTHON_ENV", "development")),
 	}
 
-# Mount API routers so all endpoints appear in Swagger.
+# Mount API routes so all endpoints appear in Swagger.
 app.include_router(api_router)
-app.include_router(v1_router)
 
 
 if __name__ == "__main__":

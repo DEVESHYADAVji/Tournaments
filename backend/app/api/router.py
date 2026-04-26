@@ -1,30 +1,26 @@
 from fastapi import APIRouter
 
-api_router = APIRouter()
+router = APIRouter(prefix="/api")
 
 
-@api_router.get("/", tags=["root"])
+@router.get("/", tags=["root"])
 async def root():
     return {"service": "Tournaments API", "status": "ok"}
 
 
-# Versioned API router mounted at /api/v1
-v1_router = APIRouter(prefix="/api/v1", tags=["v1"])
+@router.get("/health", tags=["health"])
+async def health():
+    return {"status": "ok"}
 
 
-@v1_router.get("/health", tags=["health"])
-async def health_v1():
-    return {"status": "ok", "version": "v1"}
+# Include feature routers under /api/*
+from .auth.auth_routes import router as auth_router
+from .ai.ocr_routes import router as ai_router
+from .tournaments.tournament_routes import router as tournaments_router
+
+router.include_router(auth_router)
+router.include_router(ai_router)
+router.include_router(tournaments_router)
 
 
-# Include feature routers under /api/v1/*
-from .v1.auth.auth_routes import router as auth_router
-from .v1.ai.ocr_routes import router as ai_router
-from .v1.tournaments.tournament_routes import router as tournaments_router
-
-v1_router.include_router(auth_router)
-v1_router.include_router(ai_router)
-v1_router.include_router(tournaments_router)
-
-
-__all__ = ["api_router", "v1_router"]
+__all__ = ["router"]

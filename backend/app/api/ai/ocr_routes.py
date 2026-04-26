@@ -29,7 +29,7 @@ class AISettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="AI_CHATBOT_",
-        env_file=str(Path(__file__).resolve().parents[5] / ".env"),
+        env_file=str(Path(__file__).resolve().parents[4] / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -43,7 +43,7 @@ def _utc_now_iso() -> str:
 
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[5]
+    return Path(__file__).resolve().parents[4]
 
 
 def _data_dir() -> Path:

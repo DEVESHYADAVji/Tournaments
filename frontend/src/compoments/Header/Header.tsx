@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { getProfileIcon } from '../../config/profileIcons';
+import type { StoredUser } from '../../features/auth/auth.api';
 
 interface HeaderProps {
-  user: any;
+  user: StoredUser | null;
   loggedIn: boolean;
   onLoginClick: () => void;
   onLogoutClick: () => void;
@@ -11,26 +12,32 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ user, loggedIn, onLoginClick, onLogoutClick, busy }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
+  const wrapperRef = React.useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  React.useEffect(() => {
+    if (!profileMenuOpen) {
+      return;
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [profileMenuOpen]);
+
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
     if (searchQuery.trim()) {
-      // Navigate to tournaments page with search query
       navigate(`/tournaments?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
     }
-  };
-
-  const handleProfileClick = () => {
-    setProfileMenuOpen(!profileMenuOpen);
-  };
-
-  const handleGoToProfile = () => {
-    navigate('/profile');
-    setProfileMenuOpen(false);
   };
 
   const handleLogoutClick = () => {
@@ -39,27 +46,29 @@ const Header: React.FC<HeaderProps> = ({ user, loggedIn, onLoginClick, onLogoutC
   };
 
   return (
-    <header className="amazon-header">
-      <div className="header-top">
-        {/* Logo Section */}
-        <div className="header-logo" onClick={() => navigate('/')}>
-          <div className="logo-badge">T</div>
-          <div className="logo-text">
-            <div className="logo-title">Tournaments</div>
-            <div className="logo-subtitle">Play. Track. Win.</div>
-          </div>
-        </div>
+    <header className="site-header">
+      <div className="header-inner">
+        <button type="button" className="brand-link btn btn-linklike" onClick={() => navigate('/')}>
+          <span className="brand-mark">T</span>
+          <span className="brand-text">
+            <span className="brand-wordmark">Tournaments</span>
+            <span className="brand-subtitle">Play. Organize. Climb.</span>
+          </span>
+        </button>
 
-        {/* Search Bar */}
         <form className="header-search" onSubmit={handleSearch}>
+          <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
           <input
             type="text"
-            placeholder="Search tournaments, games, news..."
+            placeholder="Search tournaments, games, or locations"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
+            aria-label="Search tournaments"
           />
-          <button type="submit" className="search-btn">
+          <button type="submit" className="search-button" aria-label="Search">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8"></circle>
               <path d="m21 21-4.35-4.35"></path>
@@ -67,92 +76,101 @@ const Header: React.FC<HeaderProps> = ({ user, loggedIn, onLoginClick, onLogoutC
           </button>
         </form>
 
-        {/* User Account Section */}
-        <div className="header-account">
+        <div className="header-actions">
+          <div className="header-utility">
+            <span className="status-dot" aria-hidden="true"></span>
+            <span>Esports-ready tournament dashboard</span>
+          </div>
+
           {loggedIn && user ? (
-            <div className="profile-dropdown-wrapper">
-              <button 
+            <div className="account-menu" ref={wrapperRef}>
+              <button
                 type="button"
-                className="user-profile"
-                onClick={handleProfileClick}
+                className="account-trigger"
+                onClick={() => setProfileMenuOpen((current) => !current)}
+                aria-expanded={profileMenuOpen}
+                aria-haspopup="menu"
               >
-                <div className="profile-icon">
-                  <div
-                    dangerouslySetInnerHTML={{
-                      __html: getProfileIcon(user.profile_icon)
-                    }}
-                  />
+                <div className="account-avatar">
+                  <div dangerouslySetInnerHTML={{ __html: getProfileIcon(user.profile_icon) }} />
                 </div>
-                <div className="user-info">
-                  <div className="user-greeting">Hello</div>
-                  <div className="user-name">{user.name || user.email}</div>
+                <div className="account-text">
+                  <span className="account-label">Signed in as</span>
+                  <span className="account-name">{user.name || user.email}</span>
                 </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
               </button>
 
-              {profileMenuOpen && (
-                <>
-                  <div className="profile-dropdown-backdrop" onClick={() => setProfileMenuOpen(false)} />
-                  <div className="profile-dropdown-menu">
-                    <div className="profile-menu-header">
-                      <div className="profile-menu-icon">
-                        <div
-                          dangerouslySetInnerHTML={{
-                            __html: getProfileIcon(user.profile_icon)
-                          }}
-                        />
-                      </div>
-                      <div className="profile-menu-info">
-                        <p className="profile-menu-name">{user.name || user.email}</p>
-                        <p className="profile-menu-email">{user.email}</p>
-                        {user.role === 'admin' && (
-                          <span className="profile-menu-role">Admin</span>
-                        )}
-                      </div>
+              {profileMenuOpen ? (
+                <div className="account-panel" role="menu">
+                  <div className="account-links">
+                    <div>
+                      <p className="account-name">{user.name || user.email}</p>
+                      <p className="account-email">{user.email}</p>
                     </div>
-                    <div className="profile-dropdown-divider"></div>
+                    <span className="role-pill">{user.role}</span>
+                  </div>
+
+                  <div className="panel-divider"></div>
+
+                  <div className="account-links">
                     <button
                       type="button"
-                      className="profile-menu-item"
-                      onClick={handleGoToProfile}
+                      className="account-link"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        navigate('/profile');
+                      }}
                     >
-                      <span className="profile-menu-icon-small">👤</span>
-                      Your Profile
+                      <span>Open profile</span>
+                      <span>Profile</span>
                     </button>
-                    {user.role === 'admin' && (
+
+                    {user.role === 'admin' ? (
                       <button
                         type="button"
-                        className="profile-menu-item"
+                        className="account-link"
                         onClick={() => {
-                          navigate('/admin');
                           setProfileMenuOpen(false);
+                          navigate('/admin');
                         }}
                       >
-                        <span className="profile-menu-icon-small">⚙️</span>
-                        Admin Panel
+                        <span>Manage tournaments</span>
+                        <span>Admin</span>
                       </button>
-                    )}
-                    <div className="profile-dropdown-divider"></div>
-                    <button
-                      type="button"
-                      className="profile-menu-item danger"
-                      onClick={handleLogoutClick}
-                      disabled={busy}
-                    >
-                      <span className="profile-menu-icon-small">🚪</span>
-                      Sign Out
-                    </button>
+                    ) : null}
+
+                    <Link to="/tournaments" className="account-link" onClick={() => setProfileMenuOpen(false)}>
+                      <span>Browse brackets and events</span>
+                      <span>Explore</span>
+                    </Link>
                   </div>
-                </>
-              )}
+
+                  <div className="panel-divider"></div>
+
+                  <button
+                    type="button"
+                    className="account-link"
+                    onClick={handleLogoutClick}
+                    disabled={busy}
+                  >
+                    <span>{busy ? 'Signing out...' : 'Sign out'}</span>
+                    <span>Exit</span>
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : (
-            <button
-              type="button"
-              className="btn btn-primary header-login-btn"
-              onClick={onLoginClick}
-            >
-              Sign In
-            </button>
+            <>
+              <button type="button" className="btn btn-secondary" onClick={onLoginClick}>
+                Sign in
+              </button>
+              <button type="button" className="btn btn-primary" onClick={onLoginClick}>
+                Get started
+              </button>
+            </>
           )}
         </div>
       </div>
