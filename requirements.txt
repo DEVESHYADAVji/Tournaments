@@ -10,3 +10,5 @@ httpx==0.28.1
 python-multipart==0.0.20
 PyPDF2==4.0.1
 python-docx==0.8.11
+PyJWT==2.10.1
+pwdlib[argon2]==0.2.1
