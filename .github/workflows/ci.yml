@@ -17,6 +17,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
       - run: python -m compileall backend services
+      - run: pytest -q
       - name: Import backend application
         env:
           SECRET_KEY: ci-only-secret-key
