@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Literal, Optional
 from hmac import compare_digest
+from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
@@ -91,17 +91,18 @@ async def _authenticate(email: str, password: str, required_role: Optional[str] 
     if not record:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    password_valid = verify_password(password, record.password)
-    if not password_valid:
-        # One-time migration for accounts created by the old plaintext-password implementation.
-        if not record.password.startswith("$argon2") and compare_digest(record.password, password):
-            record.password = hash_password(password)
+    is_legacy_password = not record.password.startswith("$argon2")
+    if is_legacy_password:
+        password_valid = compare_digest(record.password, password)
+        if password_valid:
+            migrated_hash = hash_password(password)
             async with async_session() as session:
                 migrated = await session.get(AuthUser, record.id)
                 if migrated:
-                    migrated.password = record.password
+                    migrated.password = migrated_hash
                     await session.commit()
-            password_valid = True
+    else:
+        password_valid = verify_password(password, record.password)
 
     if not password_valid or (required_role and record.role != required_role):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
