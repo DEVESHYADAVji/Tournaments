@@ -189,7 +189,7 @@ const App: React.FC = () => {
                     type="password"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="Password (min 6 chars)"
+                    placeholder="Password (min 8 chars)"
                     required
                   />
                   <button type="submit" className="btn btn-secondary" disabled={busy}>

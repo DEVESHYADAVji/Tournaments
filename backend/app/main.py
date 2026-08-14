@@ -1,11 +1,13 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import os
 import time
 
-from .api.router import router as api_router
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from .api.auth.auth_routes import seed_default_auth_users
+from .api.router import router as api_router
 from .api.tournaments.tournament_routes import seed_sample_tournaments
+from .core.config import settings
 from .core.database import init_db
 from .models import announcement as _announcement_model  # noqa: F401
 from .models import auth_user as _auth_user_model  # noqa: F401
@@ -17,62 +19,45 @@ from .models import user as _user_model  # noqa: F401
 _START_TIME = time.time()
 
 app = FastAPI(
-	title="Tournaments API",
-	version="0.1.0",
-	description="API for tournament management. Use Swagger UI to test endpoints.",
-	docs_url="/docs",
-	redoc_url="/redoc",
-	openapi_url="/openapi.json",
+    title=settings.APP_NAME,
+    version="0.1.0",
+    description="API for tournament management. Use Swagger UI to test endpoints.",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
-# Enable CORS for development. Narrow this in production.
 app.add_middleware(
-	CORSMiddleware,
-	# Allow the frontend dev server on various ports (Vite may shift ports)
-	allow_origins=[
-		"http://localhost:5173",
-		"http://localhost:5174",
-		"http://localhost:5175",
-		"http://localhost:5176",
-		"http://localhost:5177",
-		"http://127.0.0.1:5173",
-		"http://127.0.0.1:5174",
-		"http://127.0.0.1:5175",
-		"http://127.0.0.1:5176",
-		"http://127.0.0.1:5177",
-	],
-	allow_credentials=True,
-	allow_methods=["*"],
-	allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
 
 @app.on_event("startup")
 async def startup_event() -> None:
-	"""Initialize DB schema on app startup."""
-	await init_db()
-	await seed_default_auth_users()
-	await seed_sample_tournaments()
+    await init_db()
+    await seed_default_auth_users()
+    await seed_sample_tournaments()
 
 
 @app.get("/health", tags=["health"])
 async def health():
-	"""Health check endpoint."""
-	uptime = int(time.time() - _START_TIME)
-	return {
-		"status": "ok",
-		"uptime_seconds": uptime,
-		"env": os.environ.get("ENV", os.environ.get("PYTHON_ENV", "development")),
-	}
+    uptime = int(time.time() - _START_TIME)
+    return {
+        "status": "ok",
+        "uptime_seconds": uptime,
+        "env": os.environ.get("ENV", os.environ.get("PYTHON_ENV", "development")),
+    }
 
-# Mount API routes so all endpoints appear in Swagger.
+
 app.include_router(api_router)
 
 
 if __name__ == "__main__":
-	# Run with: python backend/app/main.py
-	import uvicorn
+    import uvicorn
 
-	port = int(os.environ.get("PORT", 8000))
-	uvicorn.run(app, host="0.0.0.0", port=port, reload=True)
-
-#uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=True)

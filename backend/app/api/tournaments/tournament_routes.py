@@ -1,11 +1,17 @@
 from datetime import datetime, timedelta
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, inspect, select, text
 
 from app.core.database import async_session, engine
+from app.core.security import (
+    get_current_user,
+    get_optional_current_user,
+    require_admin,
+    require_user,
+)
 from app.models.announcement import Announcement
 from app.models.auth_user import AuthUser
 from app.models.match import Match
@@ -13,6 +19,11 @@ from app.models.tournament import Tournament
 from app.models.tournament_registration import TournamentRegistration
 
 router = APIRouter(prefix="/tournaments", tags=["tournaments"])
+
+CurrentUser = Annotated[AuthUser, Depends(get_current_user)]
+OptionalUser = Annotated[AuthUser | None, Depends(get_optional_current_user)]
+AdminUser = Annotated[AuthUser, Depends(require_admin)]
+PlayerUser = Annotated[AuthUser, Depends(require_user)]
 
 
 class TournamentOut(BaseModel):
@@ -44,8 +55,8 @@ class TournamentCreateIn(BaseModel):
     description: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    prize_pool: int = 0
-    max_teams: int = 16
+    prize_pool: int = Field(default=0, ge=0)
+    max_teams: int = Field(default=16, ge=2, le=256)
 
 
 class JoinRequest(BaseModel):
@@ -80,7 +91,7 @@ class MatchCreateIn(BaseModel):
 class MatchResultIn(BaseModel):
     team_a_score: int = Field(ge=0)
     team_b_score: int = Field(ge=0)
-    winner: Optional[str] = None
+    winner: Optional[str] = Field(default=None, min_length=2, max_length=255)
 
 
 class MatchOut(BaseModel):
@@ -133,38 +144,6 @@ class MyRegistrationOut(BaseModel):
     start_date: Optional[datetime] = None
 
 
-def _request_role(request: Request) -> str:
-    return (request.headers.get("x-user-role") or "").strip().lower()
-
-
-def _request_user_id(request: Request) -> Optional[int]:
-    raw_user_id = request.headers.get("x-user-id")
-    if not raw_user_id:
-        return None
-    try:
-        return int(raw_user_id)
-    except ValueError:
-        return None
-
-
-def _require_admin(request: Request) -> None:
-    if _request_role(request) != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role is required for this action",
-        )
-
-
-def _require_user_id(request: Request) -> int:
-    user_id = _request_user_id(request)
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing user context. Please login again.",
-        )
-    return user_id
-
-
 def _to_tournament_out(
     record: Tournament,
     participants_count: int,
@@ -192,15 +171,22 @@ def _to_tournament_out(
 
 async def _get_tournament_or_404(tournament_id: int) -> Tournament:
     async with async_session() as session:
-        result = await session.execute(select(Tournament).where(Tournament.id == tournament_id))
-        tournament = result.scalar_one_or_none()
+        tournament = (
+            await session.execute(
+                select(Tournament).where(Tournament.id == tournament_id)
+            )
+        ).scalar_one_or_none()
+
     if not tournament:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tournament not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tournament not found",
+        )
     return tournament
 
 
 async def ensure_tournament_schema() -> None:
-    """Upgrade legacy tournaments schema with additional columns used by the app."""
+    """Keep legacy databases compatible until migration history is established."""
 
     def _sync_upgrade(sync_conn):
         inspector = inspect(sync_conn)
@@ -209,11 +195,11 @@ async def ensure_tournament_schema() -> None:
 
         columns = {column["name"] for column in inspector.get_columns("tournaments")}
         indexes = {index["name"] for index in inspector.get_indexes("tournaments")}
-
         statements = [
             (
                 "format",
-                "ALTER TABLE tournaments ADD COLUMN `format` VARCHAR(100) NOT NULL DEFAULT 'Single Elimination'",
+                "ALTER TABLE tournaments ADD COLUMN `format` VARCHAR(100) "
+                "NOT NULL DEFAULT 'Single Elimination'",
             ),
             (
                 "location",
@@ -229,11 +215,13 @@ async def ensure_tournament_schema() -> None:
             ),
             (
                 "prize_pool",
-                "ALTER TABLE tournaments ADD COLUMN `prize_pool` INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE tournaments ADD COLUMN `prize_pool` INTEGER "
+                "NOT NULL DEFAULT 0",
             ),
             (
                 "max_teams",
-                "ALTER TABLE tournaments ADD COLUMN `max_teams` INTEGER NOT NULL DEFAULT 16",
+                "ALTER TABLE tournaments ADD COLUMN `max_teams` INTEGER "
+                "NOT NULL DEFAULT 16",
             ),
             (
                 "created_by_user_id",
@@ -246,14 +234,18 @@ async def ensure_tournament_schema() -> None:
                 sync_conn.execute(text(sql))
 
         if "ix_tournaments_created_by_user_id" not in indexes:
-            sync_conn.execute(text("CREATE INDEX ix_tournaments_created_by_user_id ON tournaments (created_by_user_id)"))
+            sync_conn.execute(
+                text(
+                    "CREATE INDEX ix_tournaments_created_by_user_id "
+                    "ON tournaments (created_by_user_id)"
+                )
+            )
 
     async with engine.begin() as conn:
         await conn.run_sync(_sync_upgrade)
 
 
 async def seed_sample_tournaments() -> None:
-    """Seed starter tournament data so the frontend has rich content out of the box."""
     await ensure_tournament_schema()
 
     async with async_session() as session:
@@ -302,7 +294,6 @@ async def seed_sample_tournaments() -> None:
         ]
         session.add_all(items)
         await session.flush()
-
         session.add_all(
             [
                 Announcement(
@@ -333,64 +324,77 @@ async def seed_sample_tournaments() -> None:
                 ),
             ]
         )
-
         await session.commit()
 
 
 @router.get("/", response_model=list[TournamentOut])
-async def list_tournaments(request: Request):
-    user_id = _request_user_id(request)
+async def list_tournaments(current_user: OptionalUser):
+    user_id = current_user.id if current_user else None
 
     async with async_session() as session:
         tournaments = (
             await session.execute(
                 select(Tournament).order_by(
-                    Tournament.start_date.is_(None), Tournament.start_date.asc(), Tournament.created_at.desc()
+                    Tournament.start_date.is_(None),
+                    Tournament.start_date.asc(),
+                    Tournament.created_at.desc(),
                 )
             )
         ).scalars().all()
 
         registration_rows = (
             await session.execute(
-                select(TournamentRegistration.tournament_id, func.count(TournamentRegistration.id)).group_by(
-                    TournamentRegistration.tournament_id
-                )
+                select(
+                    TournamentRegistration.tournament_id,
+                    func.count(TournamentRegistration.id),
+                ).group_by(TournamentRegistration.tournament_id)
             )
         ).all()
         match_rows = (
-            await session.execute(select(Match.tournament_id, func.count(Match.id)).group_by(Match.tournament_id))
+            await session.execute(
+                select(Match.tournament_id, func.count(Match.id)).group_by(
+                    Match.tournament_id
+                )
+            )
         ).all()
 
         registered_tournament_ids: set[int] = set()
         if user_id is not None:
-            my_registrations = (
-                await session.execute(
-                    select(TournamentRegistration.tournament_id).where(TournamentRegistration.user_id == user_id)
-                )
-            ).scalars().all()
-            registered_tournament_ids = set(my_registrations)
+            registered_tournament_ids = set(
+                (
+                    await session.execute(
+                        select(TournamentRegistration.tournament_id).where(
+                            TournamentRegistration.user_id == user_id
+                        )
+                    )
+                ).scalars().all()
+            )
 
-    participants_by_tournament = {tournament_id: count for tournament_id, count in registration_rows}
-    matches_by_tournament = {tournament_id: count for tournament_id, count in match_rows}
+    participants_by_tournament = {
+        tournament_id: count for tournament_id, count in registration_rows
+    }
+    matches_by_tournament = {
+        tournament_id: count for tournament_id, count in match_rows
+    }
 
     return [
         _to_tournament_out(
             item,
-            participants_count=participants_by_tournament.get(item.id, 0),
-            matches_count=matches_by_tournament.get(item.id, 0),
-            is_registered=item.id in registered_tournament_ids,
+            participants_by_tournament.get(item.id, 0),
+            matches_by_tournament.get(item.id, 0),
+            item.id in registered_tournament_ids,
         )
         for item in tournaments
     ]
 
 
 @router.post("/", response_model=TournamentOut)
-async def create_tournament(payload: TournamentCreateIn, request: Request):
-    _require_admin(request)
-    created_by_user_id = _request_user_id(request)
-
+async def create_tournament(payload: TournamentCreateIn, current_user: AdminUser):
     if payload.end_date and payload.start_date and payload.end_date < payload.start_date:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="End date cannot be before start date")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="End date cannot be before start date",
+        )
 
     async with async_session() as session:
         tournament = Tournament(
@@ -404,25 +408,23 @@ async def create_tournament(payload: TournamentCreateIn, request: Request):
             end_date=payload.end_date,
             prize_pool=payload.prize_pool,
             max_teams=payload.max_teams,
-            created_by_user_id=created_by_user_id,
+            created_by_user_id=current_user.id,
         )
         session.add(tournament)
         await session.commit()
         await session.refresh(tournament)
 
-    return _to_tournament_out(tournament, participants_count=0, matches_count=0, is_registered=False)
+    return _to_tournament_out(tournament, 0, 0)
 
 
 @router.get("/me/registrations", response_model=list[MyRegistrationOut])
-async def get_my_registrations(request: Request):
-    user_id = _require_user_id(request)
-
+async def get_my_registrations(current_user: CurrentUser):
     async with async_session() as session:
         rows = (
             await session.execute(
                 select(TournamentRegistration, Tournament)
                 .join(Tournament, Tournament.id == TournamentRegistration.tournament_id)
-                .where(TournamentRegistration.user_id == user_id)
+                .where(TournamentRegistration.user_id == current_user.id)
                 .order_by(TournamentRegistration.created_at.desc())
             )
         ).all()
@@ -443,14 +445,20 @@ async def get_my_registrations(request: Request):
 
 
 @router.get("/{tournament_id}", response_model=TournamentOut)
-async def get_tournament(tournament_id: int, request: Request):
-    user_id = _request_user_id(request)
+async def get_tournament(tournament_id: int, current_user: OptionalUser):
+    user_id = current_user.id if current_user else None
+
     async with async_session() as session:
         tournament = (
-            await session.execute(select(Tournament).where(Tournament.id == tournament_id))
+            await session.execute(
+                select(Tournament).where(Tournament.id == tournament_id)
+            )
         ).scalar_one_or_none()
         if not tournament:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tournament not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tournament not found",
+            )
 
         participants_count = (
             await session.scalar(
@@ -460,57 +468,65 @@ async def get_tournament(tournament_id: int, request: Request):
             )
             or 0
         )
-        matches_count = await session.scalar(select(func.count(Match.id)).where(Match.tournament_id == tournament_id)) or 0
+        matches_count = (
+            await session.scalar(
+                select(func.count(Match.id)).where(Match.tournament_id == tournament_id)
+            )
+            or 0
+        )
 
         is_registered = False
         if user_id is not None:
-            existing = (
+            is_registered = (
                 await session.execute(
                     select(TournamentRegistration.id).where(
                         TournamentRegistration.tournament_id == tournament_id,
                         TournamentRegistration.user_id == user_id,
                     )
                 )
-            ).scalar_one_or_none()
-            is_registered = existing is not None
+            ).scalar_one_or_none() is not None
 
     return _to_tournament_out(
-        tournament,
-        participants_count=participants_count,
-        matches_count=matches_count,
-        is_registered=is_registered,
+        tournament, participants_count, matches_count, is_registered
     )
 
 
 @router.post("/{tournament_id}/join", response_model=JoinResponse)
-async def join_tournament(tournament_id: int, payload: JoinRequest, request: Request):
-    user_id = _require_user_id(request)
-    if _request_role(request) != "user":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only users can join tournaments",
-        )
-
+async def join_tournament(
+    tournament_id: int,
+    payload: JoinRequest,
+    current_user: PlayerUser,
+):
     async with async_session() as session:
         tournament = (
-            await session.execute(select(Tournament).where(Tournament.id == tournament_id))
+            await session.execute(
+                select(Tournament).where(Tournament.id == tournament_id)
+            )
         ).scalar_one_or_none()
         if not tournament:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tournament not found")
-
-        if tournament.status == "completed":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tournament is already completed")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tournament not found",
+            )
+        if tournament.status != "registration_open":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tournament registration is not open",
+            )
 
         existing = (
             await session.execute(
                 select(TournamentRegistration).where(
                     TournamentRegistration.tournament_id == tournament_id,
-                    TournamentRegistration.user_id == user_id,
+                    TournamentRegistration.user_id == current_user.id,
                 )
             )
         ).scalar_one_or_none()
         if existing:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You are already registered")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You are already registered",
+            )
 
         current_count = (
             await session.scalar(
@@ -521,16 +537,17 @@ async def join_tournament(tournament_id: int, payload: JoinRequest, request: Req
             or 0
         )
         if current_count >= tournament.max_teams:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tournament slots are full")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tournament slots are full",
+            )
 
-        auth_user = (
-            await session.execute(select(AuthUser).where(AuthUser.id == user_id))
-        ).scalar_one_or_none()
-        default_team_name = auth_user.name if auth_user and auth_user.name else f"Team-{user_id}"
         registration = TournamentRegistration(
             tournament_id=tournament_id,
-            user_id=user_id,
-            team_name=payload.team_name or default_team_name,
+            user_id=current_user.id,
+            team_name=payload.team_name
+            or current_user.name
+            or f"Team-{current_user.id}",
             status="registered",
             points=0,
         )
@@ -538,7 +555,11 @@ async def join_tournament(tournament_id: int, payload: JoinRequest, request: Req
         await session.commit()
         await session.refresh(registration)
 
-    return JoinResponse(success=True, message="Successfully joined tournament", registration=registration)
+    return JoinResponse(
+        success=True,
+        message="Successfully joined tournament",
+        registration=registration,
+    )
 
 
 @router.get("/{tournament_id}/standings", response_model=list[StandingRow])
@@ -549,7 +570,10 @@ async def get_standings(tournament_id: int):
             await session.execute(
                 select(TournamentRegistration)
                 .where(TournamentRegistration.tournament_id == tournament_id)
-                .order_by(TournamentRegistration.points.desc(), TournamentRegistration.created_at.asc())
+                .order_by(
+                    TournamentRegistration.points.desc(),
+                    TournamentRegistration.created_at.asc(),
+                )
             )
         ).scalars().all()
 
@@ -580,15 +604,21 @@ async def list_matches(tournament_id: int):
 
 
 @router.post("/{tournament_id}/matches", response_model=MatchOut)
-async def create_match(tournament_id: int, payload: MatchCreateIn, request: Request):
-    _require_admin(request)
+async def create_match(tournament_id: int, payload: MatchCreateIn, _: AdminUser):
     await _get_tournament_or_404(tournament_id)
+    team_a, team_b = payload.team_a.strip(), payload.team_b.strip()
+    if team_a.casefold() == team_b.casefold():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A match requires two different teams",
+        )
+
     async with async_session() as session:
         match = Match(
             tournament_id=tournament_id,
             round_name=payload.round_name,
-            team_a=payload.team_a,
-            team_b=payload.team_b,
+            team_a=team_a,
+            team_b=team_b,
             scheduled_at=payload.scheduled_at,
             status="scheduled",
         )
@@ -603,33 +633,54 @@ async def update_match_result(
     tournament_id: int,
     match_id: int,
     payload: MatchResultIn,
-    request: Request,
+    _: AdminUser,
 ):
-    _require_admin(request)
     await _get_tournament_or_404(tournament_id)
+    if payload.team_a_score == payload.team_b_score:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A completed match cannot end in a tie",
+        )
 
     async with async_session() as session:
         match = (
             await session.execute(
-                select(Match).where(Match.tournament_id == tournament_id, Match.id == match_id)
+                select(Match).where(
+                    Match.tournament_id == tournament_id,
+                    Match.id == match_id,
+                )
             )
         ).scalar_one_or_none()
         if not match:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Match not found",
+            )
 
-        winner = payload.winner
-        if not winner:
-            if payload.team_a_score > payload.team_b_score:
-                winner = match.team_a
-            elif payload.team_b_score > payload.team_a_score:
-                winner = match.team_b
+        expected_winner = (
+            match.team_a if payload.team_a_score > payload.team_b_score else match.team_b
+        )
+        winner = payload.winner.strip() if payload.winner else expected_winner
+        if winner not in {match.team_a, match.team_b} or winner != expected_winner:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Winner does not match the participating teams and scores",
+            )
 
-        match.team_a_score = payload.team_a_score
-        match.team_b_score = payload.team_b_score
-        match.winner = winner
-        match.status = "finished"
+        previous_winner = match.winner if match.status == "finished" else None
+        if previous_winner and previous_winner != winner:
+            previous_registration = (
+                await session.execute(
+                    select(TournamentRegistration).where(
+                        TournamentRegistration.tournament_id == tournament_id,
+                        TournamentRegistration.team_name == previous_winner,
+                    )
+                )
+            ).scalar_one_or_none()
+            if previous_registration:
+                previous_registration.points = max(0, previous_registration.points - 3)
 
-        if winner:
+        if previous_winner != winner:
             winner_registration = (
                 await session.execute(
                     select(TournamentRegistration).where(
@@ -641,6 +692,10 @@ async def update_match_result(
             if winner_registration:
                 winner_registration.points += 3
 
+        match.team_a_score = payload.team_a_score
+        match.team_b_score = payload.team_b_score
+        match.winner = winner
+        match.status = "finished"
         await session.commit()
         await session.refresh(match)
 
@@ -662,8 +717,11 @@ async def list_announcements(tournament_id: int):
 
 
 @router.post("/{tournament_id}/announcements", response_model=AnnouncementOut)
-async def create_announcement(tournament_id: int, payload: AnnouncementCreateIn, request: Request):
-    _require_admin(request)
+async def create_announcement(
+    tournament_id: int,
+    payload: AnnouncementCreateIn,
+    _: AdminUser,
+):
     await _get_tournament_or_404(tournament_id)
     async with async_session() as session:
         announcement = Announcement(

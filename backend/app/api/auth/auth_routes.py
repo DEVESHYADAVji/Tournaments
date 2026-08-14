@@ -1,188 +1,143 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+from hmac import compare_digest
 from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.core.database import async_session
+from app.core.security import create_access_token, hash_password, verify_password
 from app.models.auth_user import AuthUser
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class LoginRequest(BaseModel):
-	email: EmailStr
-	password: str
-	role: Optional[Literal["admin", "user"]] = None
+    email: EmailStr
+    password: str = Field(min_length=1)
+    role: Optional[Literal["admin", "user"]] = None
 
 
 class UserInfo(BaseModel):
-	id: str
-	email: EmailStr
-	name: Optional[str] = None
-	role: Literal["admin", "user"]
+    id: str
+    email: EmailStr
+    name: Optional[str] = None
+    role: Literal["admin", "user"]
 
 
 class LoginResponse(BaseModel):
-	success: bool
-	token: Optional[str] = None
-	expires_at: Optional[datetime] = None
-	user: Optional[UserInfo] = None
+    success: bool
+    token: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    user: Optional[UserInfo] = None
 
 
 class LogoutResponse(BaseModel):
-	success: bool
-	message: Optional[str] = None
+    success: bool
+    message: Optional[str] = None
 
 
 class RegisterRequest(BaseModel):
-	email: EmailStr
-	password: str
-	name: Optional[str] = None
+    email: EmailStr
+    password: str = Field(min_length=8)
+    name: Optional[str] = Field(default=None, max_length=255)
 
 
 class RegisterResponse(BaseModel):
-	success: bool
-	message: str
-	user: Optional[UserInfo] = None
-
-
-_DEFAULT_USERS = [
-	{
-		"email": "admin@example.com",
-		"name": "Admin",
-		"password": "password",
-		"role": "admin",
-	},
-	{
-		"email": "user@example.com",
-		"name": "Player One",
-		"password": "password",
-		"role": "user",
-	},
-]
+    success: bool
+    message: str
+    user: Optional[UserInfo] = None
 
 
 def _to_user_info(record: AuthUser) -> UserInfo:
-	return UserInfo(
-		id=str(record.id),
-		email=record.email,
-		name=record.name,
-		role=record.role,  # type: ignore[arg-type]
-	)
+    return UserInfo(id=str(record.id), email=record.email, name=record.name, role=record.role)  # type: ignore[arg-type]
 
 
 def _build_login_response(record: AuthUser) -> LoginResponse:
-	expires = datetime.utcnow() + timedelta(hours=8)
-	return LoginResponse(
-		success=True,
-		token=f"fake-jwt-token-{record.role}-{record.id}",
-		expires_at=expires,
-		user=_to_user_info(record),
-	)
+    token, expires_at = create_access_token(record)
+    return LoginResponse(success=True, token=token, expires_at=expires_at, user=_to_user_info(record))
 
 
 async def _get_user_by_email(email: str) -> Optional[AuthUser]:
-	async with async_session() as session:
-		result = await session.execute(select(AuthUser).where(AuthUser.email == email))
-		return result.scalar_one_or_none()
+    async with async_session() as session:
+        result = await session.execute(select(AuthUser).where(AuthUser.email == email))
+        return result.scalar_one_or_none()
 
 
 async def seed_default_auth_users() -> None:
-	"""Ensure default admin/user accounts exist for development."""
-	async with async_session() as session:
-		for user in _DEFAULT_USERS:
-			result = await session.execute(select(AuthUser).where(AuthUser.email == user["email"]))
-			existing = result.scalar_one_or_none()
-			if existing:
-				continue
-			session.add(
-				AuthUser(
-					email=user["email"],
-					name=user["name"],
-					password=user["password"],
-					role=user["role"],
-				)
-			)
-		await session.commit()
+    """Optionally seed development accounts when credentials are explicitly configured."""
+    configured_users = []
+    if settings.SEED_ADMIN_EMAIL and settings.SEED_ADMIN_PASSWORD:
+        configured_users.append((settings.SEED_ADMIN_EMAIL, "Admin", settings.SEED_ADMIN_PASSWORD, "admin"))
+    if settings.SEED_USER_EMAIL and settings.SEED_USER_PASSWORD:
+        configured_users.append((settings.SEED_USER_EMAIL, "Player One", settings.SEED_USER_PASSWORD, "user"))
+    if not configured_users:
+        return
+
+    async with async_session() as session:
+        for email, name, password, role in configured_users:
+            email = email.lower()
+            result = await session.execute(select(AuthUser).where(AuthUser.email == email))
+            if result.scalar_one_or_none():
+                continue
+            session.add(AuthUser(email=email, name=name, password=hash_password(password), role=role))
+        await session.commit()
+
+
+async def _authenticate(email: str, password: str, required_role: Optional[str] = None) -> AuthUser:
+    record = await _get_user_by_email(email.lower())
+    if not record:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    is_legacy_password = not record.password.startswith("$argon2")
+    if is_legacy_password:
+        password_valid = compare_digest(record.password, password)
+        if password_valid:
+            migrated_hash = hash_password(password)
+            async with async_session() as session:
+                migrated = await session.get(AuthUser, record.id)
+                if migrated:
+                    migrated.password = migrated_hash
+                    await session.commit()
+    else:
+        password_valid = verify_password(password, record.password)
+
+    if not password_valid or (required_role and record.role != required_role):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    return record
 
 
 @router.post("/login", response_model=LoginResponse)
 async def login(payload: LoginRequest):
-	"""Generic login endpoint. Accepts either admin or user credentials."""
-	email = str(payload.email).lower()
-	record = await _get_user_by_email(email)
-	if not record:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No user found. Please register.")
-	if record.password != payload.password:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
-	if payload.role and record.role != payload.role:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-	return _build_login_response(record)
+    return _build_login_response(await _authenticate(str(payload.email), payload.password, payload.role))
 
 
 @router.post("/login/admin", response_model=LoginResponse)
 async def login_admin(payload: LoginRequest):
-	"""Admin-only login endpoint."""
-	email = str(payload.email).lower()
-	record = await _get_user_by_email(email)
-	if not record:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No user found. Please register.")
-	if record.password != payload.password:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
-	if record.role != "admin":
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin credentials")
-	return _build_login_response(record)
+    return _build_login_response(await _authenticate(str(payload.email), payload.password, "admin"))
 
 
 @router.post("/login/user", response_model=LoginResponse)
 async def login_user(payload: LoginRequest):
-	"""User-only login endpoint."""
-	email = str(payload.email).lower()
-	record = await _get_user_by_email(email)
-	if not record:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No user found. Please register.")
-	if record.password != payload.password:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
-	if record.role != "user":
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user credentials")
-	return _build_login_response(record)
+    return _build_login_response(await _authenticate(str(payload.email), payload.password, "user"))
 
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(payload: RegisterRequest):
-	"""Register a new user account (user role only)."""
-	email = str(payload.email).lower()
-	existing = await _get_user_by_email(email)
-	if existing:
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    email = str(payload.email).lower()
+    if await _get_user_by_email(email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-	if len(payload.password) < 6:
-		raise HTTPException(
-			status_code=status.HTTP_400_BAD_REQUEST,
-			detail="Password must be at least 6 characters",
-		)
-
-	async with async_session() as session:
-		record = AuthUser(
-			email=email,
-			name=payload.name or "New User",
-			password=payload.password,
-			role="user",
-		)
-		session.add(record)
-		await session.commit()
-		await session.refresh(record)
-
-	return RegisterResponse(
-		success=True,
-		message="Registration successful",
-		user=_to_user_info(record),
-	)
+    async with async_session() as session:
+        record = AuthUser(email=email, name=payload.name or "New User", password=hash_password(payload.password), role="user")
+        session.add(record)
+        await session.commit()
+        await session.refresh(record)
+    return RegisterResponse(success=True, message="Registration successful", user=_to_user_info(record))
 
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout():
-	"""Mock logout endpoint. Invalidate token on client/server as needed."""
-	return LogoutResponse(success=True, message="Logged out")
+    return LogoutResponse(success=True, message="Logged out")

@@ -1,5 +1,6 @@
+import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,41 +11,53 @@ ROOT_ENV_FILE = BASE_DIR.parent / ".env"
 
 
 class Settings(BaseSettings):
-	# App
-	APP_NAME: str = "Tournaments API"
-	DEBUG: bool = False
-	API_PREFIX: str = "/api"
+    APP_NAME: str = "Tournaments API"
+    DEBUG: bool = False
+    API_PREFIX: str = "/api"
 
-	# Security
-	SECRET_KEY: str = "changeme"
-	ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
 
-	# Database
-	SQLALCHEMY_DATABASE_URI: Optional[str] = None
+    SQLALCHEMY_DATABASE_URI: Optional[str] = "sqlite+aiosqlite:///./tournaments.db"
 
-	# CORS
-	CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: Union[List[str], str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
-	# Other
-	PROJECT_ROOT: Path = BASE_DIR
+    SEED_ADMIN_EMAIL: Optional[str] = None
+    SEED_ADMIN_PASSWORD: Optional[str] = None
+    SEED_USER_EMAIL: Optional[str] = None
+    SEED_USER_PASSWORD: Optional[str] = None
 
-	model_config = SettingsConfigDict(
-		env_file=str(ROOT_ENV_FILE),
-		env_file_encoding="utf-8",
-		case_sensitive=True,
-		extra="ignore",
-	)
+    PROJECT_ROOT: Path = BASE_DIR
 
-	@field_validator("CORS_ORIGINS", mode="before")
-	@classmethod
-	def _assemble_cors_origins(cls, v):
-		if isinstance(v, str):
-			# allow comma separated string in env
-			return [i.strip() for i in v.split(",") if i.strip()]
-		if isinstance(v, (list, tuple)):
-			return list(v)
-		return v
+    model_config = SettingsConfigDict(
+        env_file=str(ROOT_ENV_FILE),
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _assemble_cors_origins(cls, v):
+        if isinstance(v, str):
+            candidate = v.strip()
+            if not candidate:
+                return []
+            if candidate.startswith("[") and candidate.endswith("]"):
+                try:
+                    parsed = json.loads(candidate)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
+                except json.JSONDecodeError:
+                    pass
+            return [item.strip() for item in candidate.split(",") if item.strip()]
+        if isinstance(v, (list, tuple)):
+            return [str(item).strip() for item in v if str(item).strip()]
+        return v
 
 
 settings = Settings()
-
