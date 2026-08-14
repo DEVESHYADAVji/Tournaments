@@ -20,7 +20,7 @@ jobs:
       - name: Import backend application
         env:
           SECRET_KEY: ci-only-secret-key
-          SQLALCHEMY_DATABASE_URI: sqlite+aiosqlite:///:memory:
+          SQLALCHEMY_DATABASE_URI: mysql+asyncmy://user:password@localhost:3306/tournaments
         run: python -c "from backend.app.main import app; print(app.title)"
 
   frontend:
