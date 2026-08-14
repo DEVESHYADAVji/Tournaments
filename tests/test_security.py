@@ -1,8 +1,8 @@
 import jwt
 
-from backend.app.core.config import settings
-from backend.app.core.security import create_access_token, hash_password, verify_password
-from backend.app.models.auth_user import AuthUser
+from app.core.config import settings
+from app.core.security import create_access_token, hash_password, verify_password
+from app.models.auth_user import AuthUser
 
 
 def test_password_hash_is_not_plaintext():
