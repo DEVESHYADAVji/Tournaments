@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     AI_CHATBOT_OLLAMA_BASE_URL: str = "http://localhost:11434"
     AI_CHATBOT_OLLAMA_MODEL: str = "deepseek-v3.1:671b-cloud"
     AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS: int = 45
+    RAZORPAY_KEY_ID: Optional[str] = None
+    RAZORPAY_KEY_SECRET: Optional[str] = None
+    RAZORPAY_WEBHOOK_SECRET: Optional[str] = None
     PROJECT_ROOT: Path = BASE_DIR
 
     model_config = SettingsConfigDict(env_file=str(ROOT_ENV_FILE), env_file_encoding="utf-8", case_sensitive=True, extra="ignore")
