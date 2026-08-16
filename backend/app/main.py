@@ -12,6 +12,7 @@ from .models import announcement as _announcement_model  # noqa: F401
 from .models import auth_user as _auth_user_model  # noqa: F401
 from .models import match as _match_model  # noqa: F401
 from .models import notification as _notification_model  # noqa: F401
+from .models import password_reset_token as _password_reset_token_model  # noqa: F401
 from .models import payment as _payment_model  # noqa: F401
 from .models import payment_webhook_event as _payment_webhook_event_model  # noqa: F401
 from .models import team as _team_model  # noqa: F401
