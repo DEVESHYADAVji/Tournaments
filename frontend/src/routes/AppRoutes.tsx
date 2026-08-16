@@ -10,6 +10,7 @@ const Bracket = lazy(() => import('../pages/Bracket'));
 const Profile = lazy(() => import('../pages/Profile'));
 const Teams = lazy(() => import('../pages/Teams'));
 const Notifications = lazy(() => import('../pages/Notifications'));
+const TournamentCopilot = lazy(() => import('../pages/TournamentCopilot'));
 const Admin = lazy(() => import('../pages/Admin'));
 const ImageTextExtractor = lazy(() => import('../pages/ImageTextExtractor'));
 
@@ -26,6 +27,7 @@ const AppRoutes: React.FC = () => (
       <Route path="/tournaments/:id/bracket" element={<Bracket />} />
       <Route path="/teams" element={<Teams />} />
       <Route path="/notifications" element={<Notifications />} />
+      <Route path="/admin/copilot" element={<TournamentCopilot />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/ocr" element={<ImageTextExtractor />} />
       <Route path="/admin" element={<AdminRoute />} />
