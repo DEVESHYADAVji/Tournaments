@@ -12,6 +12,7 @@ from .core.database import init_db
 from .models import announcement as _announcement_model  # noqa: F401
 from .models import auth_user as _auth_user_model  # noqa: F401
 from .models import match as _match_model  # noqa: F401
+from .models import team as _team_model  # noqa: F401
 from .models import tournament as _tournament_model  # noqa: F401
 from .models import tournament_registration as _registration_model  # noqa: F401
 from .models import user as _user_model  # noqa: F401
