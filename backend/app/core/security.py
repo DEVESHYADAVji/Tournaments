@@ -60,22 +60,17 @@ async def get_current_user(
             settings.SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
-    except jwt.PyJWTError as exc:
+        if payload.get("type") != "access":
+            raise ValueError("Invalid token type")
+        user_id = int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
-    user_id = payload.get("sub")
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user = await _get_user_by_id(int(user_id))
+    user = await _get_user_by_id(user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

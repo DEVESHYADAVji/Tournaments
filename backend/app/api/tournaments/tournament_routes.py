@@ -500,7 +500,9 @@ async def join_tournament(
     async with async_session() as session:
         tournament = (
             await session.execute(
-                select(Tournament).where(Tournament.id == tournament_id)
+                select(Tournament)
+                .where(Tournament.id == tournament_id)
+                .with_for_update()
             )
         ).scalar_one_or_none()
         if not tournament:
