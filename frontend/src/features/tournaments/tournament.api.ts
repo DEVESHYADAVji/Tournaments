@@ -100,36 +100,12 @@ export interface MyRegistration {
   start_date?: string | null;
 }
 
-const fallbackTournaments: Tournament[] = [
-  {
-    id: 1,
-    name: 'Valor Clash Invitational',
-    game: 'Valorant',
-    format: 'Double Elimination',
-    status: 'registration_open',
-    location: 'Online',
-    description: 'Regional invitational with live streams and playoffs.',
-    start_date: '2026-03-12T18:00:00Z',
-    end_date: '2026-03-15T20:00:00Z',
-    prize_pool: 25000,
-    max_teams: 16,
-    participants_count: 0,
-    matches_count: 0,
-    is_registered: false,
-  },
-];
-
 export const getAllTournaments = async (): Promise<Tournament[]> => {
-  try {
-    const response = await httpClient.get('/tournaments');
-    if (Array.isArray(response.data)) {
-      return response.data as Tournament[];
-    }
-    return fallbackTournaments;
-  } catch (error) {
-    console.error('getAllTournaments failed, returning fallback data', error);
-    return fallbackTournaments;
+  const response = await httpClient.get('/tournaments');
+  if (!Array.isArray(response.data)) {
+    throw new Error('Invalid tournament response');
   }
+  return response.data as Tournament[];
 };
 
 export const getTournamentById = async (id: number | string): Promise<Tournament | null> => {

@@ -6,6 +6,7 @@ import { getAllTournaments, type Tournament } from '../features/tournaments/tour
 const Tournaments: React.FC = () => {
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
   const [loading, setLoading] = React.useState<boolean>(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -22,14 +23,25 @@ const Tournaments: React.FC = () => {
     let active = true;
     const run = async () => {
       setLoading(true);
-      const data = await getAllTournaments();
-      if (active) {
-        setTournaments(data);
-        setLoading(false);
+      setLoadError(null);
+      try {
+        const data = await getAllTournaments();
+        if (active) {
+          setTournaments(data);
+        }
+      } catch (error) {
+        console.error('Failed to load tournaments', error);
+        if (active) {
+          setLoadError('Unable to load tournaments. Please try again.');
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
-    run();
+    void run();
     return () => {
       active = false;
     };
@@ -156,6 +168,11 @@ const Tournaments: React.FC = () => {
                 <div className="loading-view">
                   <div className="spinner" aria-hidden="true" />
                   <p>Loading tournaments...</p>
+                </div>
+              ) : loadError ? (
+                <div className="empty-state">
+                  <h3>Unable to load tournaments</h3>
+                  <p>{loadError}</p>
                 </div>
               ) : filtered.length ? (
                 <div className="card-grid">
