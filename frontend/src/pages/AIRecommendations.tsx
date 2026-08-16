@@ -1,38 +1,12 @@
 import React from 'react';
+import type { AxiosError } from 'axios';
 import httpClient from '../services/http';
-
 interface Tournament { id: number; name: string; game: string; status: string; }
+interface ApiError { detail?: string; }
 const AIRecommendations: React.FC = () => {
-  const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
-  const [tournamentId, setTournamentId] = React.useState('');
-  const [focus, setFocus] = React.useState('performance');
-  const [instruction, setInstruction] = React.useState('');
-  const [recommendation, setRecommendation] = React.useState('');
-  const [message, setMessage] = React.useState('');
-  const [busy, setBusy] = React.useState(false);
-
+  const [tournaments, setTournaments] = React.useState<Tournament[]>([]); const [tournamentId, setTournamentId] = React.useState(''); const [focus, setFocus] = React.useState('performance'); const [instruction, setInstruction] = React.useState(''); const [recommendation, setRecommendation] = React.useState(''); const [message, setMessage] = React.useState(''); const [busy, setBusy] = React.useState(false);
   React.useEffect(() => { void httpClient.get<Tournament[]>('/tournaments/').then((response) => setTournaments(response.data)).catch(() => setMessage('Unable to load tournaments for AI recommendations.')); }, []);
-
-  const generate = async (event: React.FormEvent) => {
-    event.preventDefault(); setMessage(''); setRecommendation('');
-    if (!tournamentId) { setMessage('Select a tournament first.'); return; }
-    setBusy(true);
-    try {
-      const response = await httpClient.post('/ai/recommendations', { tournament_id: Number(tournamentId), focus, instruction: instruction.trim() || undefined });
-      setRecommendation(response.data.recommendation);
-    } catch (error: any) { setMessage(error?.response?.data?.detail || 'AI recommendations are temporarily unavailable.'); }
-    finally { setBusy(false); }
-  };
-
-  return <div className="section-stack page-enter">
-    <section className="hero-surface"><div className="hero-inner"><p className="section-label">AI competitive assistant</p><h1 className="hero-title">Recommendations grounded in tournament data.</h1><p>Recommendations are advisory only. Tournament state, permissions, scoring, and publishing remain controlled by the application.</p></div></section>
-    <section className="section-card"><div className="section-card-inner"><form className="form-stack" onSubmit={generate}>
-      <label className="field-label" htmlFor="ai-tournament">Tournament</label><select id="ai-tournament" value={tournamentId} onChange={(event) => setTournamentId(event.target.value)} required><option value="">Select tournament</option>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.name} — {tournament.game}</option>)}</select>
-      <label className="field-label" htmlFor="ai-focus">Recommendation focus</label><select id="ai-focus" value={focus} onChange={(event) => setFocus(event.target.value)}><option value="seeding">Seeding</option><option value="scheduling">Scheduling</option><option value="matchups">Matchups</option><option value="performance">Performance</option><option value="recap">Recap</option></select>
-      <label className="field-label" htmlFor="ai-instruction">Optional request</label><textarea id="ai-instruction" rows={5} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="e.g. Explain what an organizer should review before the next round." />
-      <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Analyzing...' : 'Generate recommendation'}</button>
-    </form>{message ? <p className="message-text" role="alert">{message}</p> : null}</div></section>
-    {recommendation ? <section className="section-card"><div className="section-card-inner"><p className="section-label">AI-generated recommendation</p><div className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{recommendation}</div><p>Verify this recommendation against the tournament state before taking any action.</p></div></section> : null}
-  </div>;
+  const generate = async (event: React.FormEvent) => { event.preventDefault(); setMessage(''); setRecommendation(''); if (!tournamentId) { setMessage('Select a tournament first.'); return; } setBusy(true); try { const response = await httpClient.post('/ai/recommendations', { tournament_id: Number(tournamentId), focus, instruction: instruction.trim() || undefined }); setRecommendation(response.data.recommendation); } catch (error: unknown) { const detail = (error as AxiosError<ApiError>)?.response?.data?.detail; setMessage(detail || 'AI recommendations are temporarily unavailable.'); } finally { setBusy(false); } };
+  return <div className="section-stack page-enter"><section className="hero-surface"><div className="hero-inner"><p className="section-label">AI competitive assistant</p><h1 className="hero-title">Recommendations grounded in tournament data.</h1><p>Recommendations are advisory only. Tournament state, permissions, scoring, and publishing remain controlled by the application.</p></div></section><section className="section-card"><div className="section-card-inner"><form className="form-stack" onSubmit={generate}><label className="field-label" htmlFor="ai-tournament">Tournament</label><select id="ai-tournament" value={tournamentId} onChange={(event) => setTournamentId(event.target.value)} required><option value="">Select tournament</option>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.name} — {tournament.game}</option>)}</select><label className="field-label" htmlFor="ai-focus">Recommendation focus</label><select id="ai-focus" value={focus} onChange={(event) => setFocus(event.target.value)}><option value="seeding">Seeding</option><option value="scheduling">Scheduling</option><option value="matchups">Matchups</option><option value="performance">Performance</option><option value="recap">Recap</option></select><label className="field-label" htmlFor="ai-instruction">Optional request</label><textarea id="ai-instruction" rows={5} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="e.g. Explain what an organizer should review before the next round." /><button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Analyzing...' : 'Generate recommendation'}</button></form>{message ? <p className="message-text" role="alert">{message}</p> : null}</div></section>{recommendation ? <section className="section-card"><div className="section-card-inner"><p className="section-label">AI-generated recommendation</p><div className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{recommendation}</div><p>Verify this recommendation against the tournament state before taking any action.</p></div></section> : null}</div>;
 };
 export default AIRecommendations;
