@@ -1,0 +1,33 @@
+.tournament-action-bar .section-card-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.bracket-scroll {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.bracket-round {
+  flex: 0 0 230px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.bracket-team {
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--text);
+}
+
+@media (max-width: 720px) {
+  .tournament-action-bar .section-card-inner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
