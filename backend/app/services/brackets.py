@@ -77,13 +77,12 @@ def generate_double_elimination(teams: Sequence[str]) -> list[MatchSlot]:
             losers_slots.append(MatchSlot(f"Losers Round {round_index + 1}", match_number, None, None, "losers"))
             match_number += 1
 
-    winners.append(MatchSlot("Grand Final", match_number, None, None, "grand_final"))
+    losers_slots.append(MatchSlot("Grand Final", match_number, None, None, "grand_final"))
     return winners + losers_slots
 
 
 def generate_round_robin(teams: Sequence[str]) -> list[MatchSlot]:
-    normalized = _validate_teams(teams)
-    working: list[str | None] = list(normalized)
+    working: list[str | None] = list(_validate_teams(teams))
     if len(working) % 2:
         working.append(None)
 
@@ -100,7 +99,7 @@ def generate_round_robin(teams: Sequence[str]) -> list[MatchSlot]:
 
 
 def generate_swiss(teams: Sequence[str]) -> list[MatchSlot]:
-    """Create a deterministic first Swiss round; later rounds are result-driven."""
+    """Create the deterministic first Swiss round; later rounds are result-driven."""
     normalized = _validate_teams(teams)
     slots: list[MatchSlot] = []
     match_number = 1
