@@ -16,11 +16,13 @@ async def health():
 from .ai.ocr_routes import router as ai_router
 from .auth.auth_routes import router as auth_router
 from .teams.team_routes import router as teams_router
+from .tournaments.tournament_ops_routes import router as tournament_ops_router
 from .tournaments.tournament_routes import router as tournaments_router
 
 router.include_router(auth_router)
 router.include_router(ai_router)
 router.include_router(teams_router)
+router.include_router(tournament_ops_router)
 router.include_router(tournaments_router)
 
 
