@@ -12,6 +12,7 @@ async def health():
 
 from .ai.copilot_routes import router as copilot_router
 from .ai.ocr_routes import router as ai_router
+from .ai.recommendation_routes import router as recommendation_router
 from .auth.auth_routes import router as auth_router
 from .integrations.integration_routes import router as integrations_router
 from .notifications.notification_routes import router as notifications_router
@@ -28,6 +29,7 @@ from .tournaments.tournament_stream import router as tournament_stream_router
 
 router.include_router(auth_router)
 router.include_router(ai_router)
+router.include_router(recommendation_router)
 router.include_router(copilot_router)
 router.include_router(integrations_router)
 router.include_router(notifications_router)
