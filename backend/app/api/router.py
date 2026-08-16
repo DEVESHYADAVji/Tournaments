@@ -3,14 +3,17 @@ from fastapi import APIRouter
 router = APIRouter(prefix="/api")
 
 @router.get("/", tags=["root"])
-async def root(): return {"service": "Tournaments API", "status": "ok"}
+async def root():
+    return {"service": "Tournaments API", "status": "ok"}
 
 @router.get("/health", tags=["health"])
-async def health(): return {"status": "ok"}
+async def health():
+    return {"status": "ok"}
 
 from .ai.copilot_routes import router as copilot_router
 from .ai.ocr_routes import router as ai_router
 from .auth.auth_routes import router as auth_router
+from .integrations.integration_routes import router as integrations_router
 from .notifications.notification_routes import router as notifications_router
 from .payments.payment_routes import router as payments_router
 from .payments.payment_public_routes import router as payment_public_router
@@ -25,6 +28,7 @@ from .tournaments.tournament_stream import router as tournament_stream_router
 router.include_router(auth_router)
 router.include_router(ai_router)
 router.include_router(copilot_router)
+router.include_router(integrations_router)
 router.include_router(notifications_router)
 router.include_router(payments_router)
 router.include_router(payment_public_router)
