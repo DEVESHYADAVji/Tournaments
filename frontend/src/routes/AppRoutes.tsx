@@ -9,19 +9,13 @@ const TournamentDetails = lazy(() => import('../pages/TournamentDetails'));
 const Bracket = lazy(() => import('../pages/Bracket'));
 const Profile = lazy(() => import('../pages/Profile'));
 const Teams = lazy(() => import('../pages/Teams'));
+const Notifications = lazy(() => import('../pages/Notifications'));
 const Admin = lazy(() => import('../pages/Admin'));
 const ImageTextExtractor = lazy(() => import('../pages/ImageTextExtractor'));
 
-const LoadingFallback: React.FC = () => (
-  <div className="loading-view"><div className="spinner" aria-hidden="true" /><p>Loading...</p></div>
-);
-
+const LoadingFallback: React.FC = () => <div className="loading-view"><div className="spinner" aria-hidden="true" /><p>Loading...</p></div>;
 const AdminRoute: React.FC = () => (isAdmin() ? <Admin /> : <Navigate to="/" replace />);
-
-const TournamentDetailsRoute: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  return <><TournamentDetails /><TournamentActions key={id} /></>;
-};
+const TournamentDetailsRoute: React.FC = () => { const { id } = useParams<{ id: string }>(); return <><TournamentDetails /><TournamentActions key={id} /></>; };
 
 const AppRoutes: React.FC = () => (
   <Suspense fallback={<LoadingFallback />}>
@@ -31,6 +25,7 @@ const AppRoutes: React.FC = () => (
       <Route path="/tournaments/:id" element={<TournamentDetailsRoute />} />
       <Route path="/tournaments/:id/bracket" element={<Bracket />} />
       <Route path="/teams" element={<Teams />} />
+      <Route path="/notifications" element={<Notifications />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/ocr" element={<ImageTextExtractor />} />
       <Route path="/admin" element={<AdminRoute />} />
