@@ -1,9 +1,7 @@
 import os
 import time
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from .api.auth.auth_routes import seed_default_auth_users
 from .api.router import router as api_router
 from .api.tournaments.tournament_routes import seed_sample_tournaments
@@ -15,6 +13,7 @@ from .models import auth_user as _auth_user_model  # noqa: F401
 from .models import match as _match_model  # noqa: F401
 from .models import notification as _notification_model  # noqa: F401
 from .models import payment as _payment_model  # noqa: F401
+from .models import payment_webhook_event as _payment_webhook_event_model  # noqa: F401
 from .models import team as _team_model  # noqa: F401
 from .models import tournament as _tournament_model  # noqa: F401
 from .models import tournament_registration as _registration_model  # noqa: F401

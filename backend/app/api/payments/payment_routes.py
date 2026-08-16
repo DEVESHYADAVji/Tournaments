@@ -1,18 +1,21 @@
 import hashlib
 import hmac
 import json
+import time
 from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.core.database import async_session
 from app.core.security import require_admin, require_user
 from app.models.auth_user import AuthUser
 from app.models.payment import Payment
+from app.models.payment_webhook_event import PaymentWebhookEvent
 from app.models.tournament import Tournament
 from app.models.tournament_registration import TournamentRegistration
 
@@ -121,6 +124,9 @@ async def payment_webhook(request: Request):
         raise HTTPException(status_code=503, detail="Razorpay webhook secret is not configured")
     raw_body = await request.body()
     signature = request.headers.get("X-Razorpay-Signature", "")
+    event_id = request.headers.get("x-razorpay-event-id", "")
+    if not event_id:
+        raise HTTPException(status_code=400, detail="Missing webhook event id")
     expected = hmac.new(settings.RAZORPAY_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, signature):
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
@@ -129,20 +135,33 @@ async def payment_webhook(request: Request):
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="Invalid webhook payload") from exc
 
-    event = payload.get("event")
-    order_entity = payload.get("payload", {}).get("order", {}).get("entity", {})
-    payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
-    order_id = order_entity.get("id") or payment_entity.get("order_id")
-    if not order_id:
-        return {"success": True, "ignored": True}
-    status_value = "paid" if event in {"order.paid", "payment.captured"} else "failed" if event == "payment.failed" else None
-    if not status_value:
-        return {"success": True, "ignored": True}
+    created_at = payload.get("created_at")
+    if isinstance(created_at, int) and abs(time.time() - created_at) > 300:
+        raise HTTPException(status_code=400, detail="Stale webhook event")
 
     async with async_session() as session:
-        payment = (await session.execute(select(Payment).where(Payment.order_id == order_id))).scalar_one_or_none()
-        if payment and payment.status != "paid":
-            payment.status = status_value
-            payment.payment_id = payment_entity.get("id") or payment.payment_id
+        duplicate = (await session.execute(select(PaymentWebhookEvent).where(PaymentWebhookEvent.event_id == event_id))).scalar_one_or_none()
+        if duplicate:
+            return {"success": True, "duplicate": True}
+        session.add(PaymentWebhookEvent(event_id=event_id))
+        try:
+            await session.flush()
+        except IntegrityError:
+            await session.rollback()
+            return {"success": True, "duplicate": True}
+
+        event = payload.get("event")
+        order_entity = payload.get("payload", {}).get("order", {}).get("entity", {})
+        payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+        order_id = order_entity.get("id") or payment_entity.get("order_id")
+        if not order_id:
             await session.commit()
+            return {"success": True, "ignored": True}
+        status_value = "paid" if event in {"order.paid", "payment.captured"} else "failed" if event == "payment.failed" else None
+        if status_value:
+            payment = (await session.execute(select(Payment).where(Payment.order_id == order_id))).scalar_one_or_none()
+            if payment and payment.status != "paid":
+                payment.status = status_value
+                payment.payment_id = payment_entity.get("id") or payment.payment_id
+        await session.commit()
     return {"success": True}
