@@ -25,12 +25,36 @@ class Settings(BaseSettings):
     AI_CHATBOT_OLLAMA_BASE_URL: str = "http://localhost:11434"
     AI_CHATBOT_OLLAMA_MODEL: str = "deepseek-v3.1:671b-cloud"
     AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS: int = 45
+    AI_CHATBOT_OCR_MODEL: str = "qwen3-vl:235b-cloud"
     RAZORPAY_KEY_ID: Optional[str] = None
     RAZORPAY_KEY_SECRET: Optional[str] = None
     RAZORPAY_WEBHOOK_SECRET: Optional[str] = None
+
+    # Social/OAuth integrations. These remain optional until the provider is configured.
+    PUBLIC_API_BASE_URL: str = "http://localhost:8000"
+    OAUTH_FRONTEND_CALLBACK_URL: str = "http://localhost:5173/oauth/callback"
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    FACEBOOK_APP_ID: Optional[str] = None
+    FACEBOOK_APP_SECRET: Optional[str] = None
+
+    # Discord announcements.
+    DISCORD_BOT_TOKEN: Optional[str] = None
+    DISCORD_CHANNEL_ID: Optional[str] = None
+
+    # Twitch/YouTube stream embedding.
+    STREAM_PROVIDER: str = ""
+    STREAM_CHANNEL: Optional[str] = None
+    STREAM_PARENT_DOMAIN: str = "localhost"
+
     PROJECT_ROOT: Path = BASE_DIR
 
-    model_config = SettingsConfigDict(env_file=str(ROOT_ENV_FILE), env_file_encoding="utf-8", case_sensitive=True, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=str(ROOT_ENV_FILE),
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
