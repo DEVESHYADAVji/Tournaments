@@ -5,6 +5,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.core.database import async_session
@@ -133,7 +134,14 @@ async def register(payload: RegisterRequest):
     async with async_session() as session:
         record = AuthUser(email=email, name=payload.name or "New User", password=hash_password(payload.password), role="user")
         session.add(record)
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError as exc:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            ) from exc
         await session.refresh(record)
     return RegisterResponse(success=True, message="Registration successful", user=_to_user_info(record))
 
