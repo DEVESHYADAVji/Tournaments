@@ -16,6 +16,7 @@ from .payments.payment_routes import router as payments_router
 from .payments.payment_public_routes import router as payment_public_router
 from .profile.profile_routes import router as profile_router
 from .teams.team_routes import router as teams_router
+from .tournaments.bracket_progression_routes import router as bracket_progression_router
 from .tournaments.registration_ops_routes import router as registration_ops_router
 from .tournaments.tournament_ops_routes import router as tournament_ops_router
 from .tournaments.tournament_routes import router as tournaments_router
@@ -29,9 +30,9 @@ router.include_router(payments_router)
 router.include_router(payment_public_router)
 router.include_router(profile_router)
 router.include_router(teams_router)
+router.include_router(bracket_progression_router)
 router.include_router(registration_ops_router)
 router.include_router(tournament_ops_router)
 router.include_router(tournaments_router)
 router.include_router(tournament_stream_router)
-
 __all__ = ["router"]

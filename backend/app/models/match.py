@@ -7,9 +7,7 @@ from app.core.database import Base
 
 class Match(Base):
     __tablename__ = "matches"
-    __table_args__ = (
-        Index("ix_match_tournament_id", "tournament_id"),
-    )
+    __table_args__ = (Index("ix_match_tournament_id", "tournament_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
     tournament_id = Column(Integer, nullable=False)
@@ -21,7 +19,9 @@ class Match(Base):
     team_b_score = Column(Integer, nullable=True)
     winner = Column(String(255), nullable=True)
     status = Column(String(50), nullable=False, default="scheduled")
+    bracket_match_number = Column(Integer, nullable=True, index=True)
+    next_match_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    def __repr__(self) -> str:  # pragma: no cover - developer convenience
+    def __repr__(self) -> str:
         return f"<Match id={self.id} tournament_id={self.tournament_id} {self.team_a} vs {self.team_b}>"
