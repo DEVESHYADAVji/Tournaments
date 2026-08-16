@@ -19,6 +19,7 @@ from .teams.team_routes import router as teams_router
 from .tournaments.registration_ops_routes import router as registration_ops_router
 from .tournaments.tournament_ops_routes import router as tournament_ops_router
 from .tournaments.tournament_routes import router as tournaments_router
+from .tournaments.tournament_stream import router as tournament_stream_router
 
 router.include_router(auth_router)
 router.include_router(ai_router)
@@ -31,5 +32,6 @@ router.include_router(teams_router)
 router.include_router(registration_ops_router)
 router.include_router(tournament_ops_router)
 router.include_router(tournaments_router)
+router.include_router(tournament_stream_router)
 
 __all__ = ["router"]
