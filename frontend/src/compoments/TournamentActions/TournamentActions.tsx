@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { AxiosError } from 'axios';
-import { getStoredUser, isAdmin, isAuthenticated } from '../features/auth/auth.api';
-import { getTournamentById, type Tournament } from '../features/tournaments/tournament.api';
-import httpClient from '../services/http';
+import { getStoredUser, isAdmin, isAuthenticated } from '../../features/auth/auth.api';
+import { getTournamentById, type Tournament } from '../../features/tournaments/tournament.api';
+import httpClient from '../../services/http';
 
 const TournamentActions: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +31,7 @@ const TournamentActions: React.FC = () => {
     }
   };
 
-  if (!id || (!user && !isAdmin())) return null;
+  if (!id || !user) return null;
 
   return (
     <div className="section-card tournament-action-bar">
@@ -41,7 +41,7 @@ const TournamentActions: React.FC = () => {
           <p>{tournament?.is_registered ? 'Your registration is active. Check in when the event window opens.' : 'Manage your tournament participation from here.'}</p>
         </div>
         <div className="inline-actions">
-          {isAuthenticated() && tournament?.is_registered ? <button type="button" className="btn btn-primary" onClick={() => void handleCheckIn()} disabled={busy}>{busy ? 'Checking in...' : 'Check in'}</button> : null}
+          {tournament?.is_registered ? <button type="button" className="btn btn-primary" onClick={() => void handleCheckIn()} disabled={busy}>{busy ? 'Checking in...' : 'Check in'}</button> : null}
           {isAdmin() ? <Link to={`/tournaments/${id}/bracket`} className="btn btn-secondary">Open bracket</Link> : null}
         </div>
         {message ? <p className="message-text">{message}</p> : null}
