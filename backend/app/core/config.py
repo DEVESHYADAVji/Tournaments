@@ -5,7 +5,6 @@ from typing import List, Optional, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 ROOT_ENV_FILE = BASE_DIR.parent / ".env"
 
@@ -14,22 +13,39 @@ class Settings(BaseSettings):
     APP_NAME: str = "Tournaments API"
     DEBUG: bool = False
     API_PREFIX: str = "/api"
-
     SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
-
     SQLALCHEMY_DATABASE_URI: Optional[str] = "sqlite+aiosqlite:///./tournaments.db"
-
-    CORS_ORIGINS: Union[List[str], str] = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ]
-
+    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     SEED_ADMIN_EMAIL: Optional[str] = None
     SEED_ADMIN_PASSWORD: Optional[str] = None
     SEED_USER_EMAIL: Optional[str] = None
     SEED_USER_PASSWORD: Optional[str] = None
+    AI_CHATBOT_OLLAMA_BASE_URL: str = "http://localhost:11434"
+    AI_CHATBOT_OLLAMA_MODEL: str = "deepseek-v3.1:671b-cloud"
+    AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS: int = 45
+    AI_CHATBOT_OCR_MODEL: str = "qwen3-vl:235b-cloud"
+    RAZORPAY_KEY_ID: Optional[str] = None
+    RAZORPAY_KEY_SECRET: Optional[str] = None
+    RAZORPAY_WEBHOOK_SECRET: Optional[str] = None
+
+    # Social/OAuth integrations. These remain optional until the provider is configured.
+    PUBLIC_API_BASE_URL: str = "http://localhost:8000"
+    OAUTH_FRONTEND_CALLBACK_URL: str = "http://localhost:5173/oauth/callback"
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    FACEBOOK_APP_ID: Optional[str] = None
+    FACEBOOK_APP_SECRET: Optional[str] = None
+
+    # Discord announcements.
+    DISCORD_BOT_TOKEN: Optional[str] = None
+    DISCORD_CHANNEL_ID: Optional[str] = None
+
+    # Twitch/YouTube stream embedding.
+    STREAM_PROVIDER: str = ""
+    STREAM_CHANNEL: Optional[str] = None
+    STREAM_PARENT_DOMAIN: str = "localhost"
 
     PROJECT_ROOT: Path = BASE_DIR
 
