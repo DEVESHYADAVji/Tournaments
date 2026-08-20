@@ -14,7 +14,7 @@ def test_password_hash_is_not_plaintext():
     assert not verify_password("wrong password", password_hash)
 
 
-def test_access_token_contains_identity_and_role():
+def test_access_token_contains_identity_role_and_unique_identifier():
     user = AuthUser(id=42, email="player@example.com", name="Player", role="user", password="unused")
 
     token, expires_at = create_access_token(user)
@@ -23,4 +23,17 @@ def test_access_token_contains_identity_and_role():
     assert payload["sub"] == "42"
     assert payload["role"] == "user"
     assert payload["type"] == "access"
+    assert isinstance(payload["jti"], str) and len(payload["jti"]) == 32
     assert expires_at.tzinfo is not None
+
+
+def test_access_tokens_get_distinct_identifiers():
+    user = AuthUser(id=42, email="player@example.com", name="Player", role="user", password="unused")
+
+    first, _ = create_access_token(user)
+    second, _ = create_access_token(user)
+
+    first_jti = jwt.decode(first, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])["jti"]
+    second_jti = jwt.decode(second, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])["jti"]
+
+    assert first_jti != second_jti
