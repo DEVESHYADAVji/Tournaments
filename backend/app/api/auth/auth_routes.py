@@ -7,14 +7,15 @@ import smtplib
 from email.message import EmailMessage
 from typing import Literal, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.core.database import async_session
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token, hash_password, revoke_access_token, security_scheme, verify_password
 from app.models.auth_user import AuthUser
 from app.models.password_reset_token import PasswordResetToken
 
@@ -229,5 +230,12 @@ async def reset_password(payload: ResetPasswordRequest):
 
 
 @router.post("/logout", response_model=LogoutResponse)
-async def logout():
+async def logout(credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme)):
+    if credentials is None or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    await revoke_access_token(credentials.credentials)
     return LogoutResponse(success=True, message="Logged out successfully")
