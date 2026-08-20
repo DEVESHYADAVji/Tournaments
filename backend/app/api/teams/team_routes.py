@@ -86,6 +86,18 @@ async def invite_to_team(team_id: int, payload: InviteIn, current_user: CurrentU
         if not team:
             raise HTTPException(status_code=404, detail="Team not found or not owned by you")
 
+        pending_invitation = (
+            await session.execute(
+                select(TeamInvitation).where(
+                    TeamInvitation.team_id == team_id,
+                    TeamInvitation.email == email,
+                    TeamInvitation.status == "pending",
+                )
+            )
+        ).scalar_one_or_none()
+        if pending_invitation:
+            raise HTTPException(status_code=409, detail="A pending invitation already exists for this user")
+
         invited_user = (
             await session.execute(select(AuthUser).where(AuthUser.email == email))
         ).scalar_one_or_none()
