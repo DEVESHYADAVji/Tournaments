@@ -16,6 +16,7 @@ from .models import password_reset_token as _password_reset_token_model  # noqa:
 from .models import payment as _payment_model  # noqa: F401
 from .models import payment_webhook_event as _payment_webhook_event_model  # noqa: F401
 from .models import team as _team_model  # noqa: F401
+from .models import token_revocation as _token_revocation_model  # noqa: F401
 from .models import tournament as _tournament_model  # noqa: F401
 from .models import tournament_registration as _registration_model  # noqa: F401
 from .models import user as _user_model  # noqa: F401
