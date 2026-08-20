@@ -49,6 +49,22 @@ async def _require_gateway():
         raise HTTPException(status_code=503, detail="Razorpay payment gateway is not configured")
 
 
+async def _fetch_razorpay_payment(payment_id: str) -> dict:
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.get(
+                f"https://api.razorpay.com/v1/payments/{payment_id}",
+                auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET),
+            )
+            response.raise_for_status()
+            payment = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail="Unable to verify payment with Razorpay") from exc
+    if not isinstance(payment, dict):
+        raise HTTPException(status_code=502, detail="Razorpay returned an invalid payment response")
+    return payment
+
+
 @router.patch("/tournaments/{tournament_id}/fee", response_model=dict)
 async def set_entry_fee(tournament_id: int, payload: EntryFeeUpdate, _: AuthUser = Depends(require_admin)):
     async with async_session() as session:
@@ -107,10 +123,20 @@ async def verify_payment(payload: VerifyPaymentIn, current_user: CurrentUser):
     expected = hmac.new(settings.RAZORPAY_KEY_SECRET.encode(), f"{payload.order_id}|{payload.payment_id}".encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, payload.signature):
         raise HTTPException(status_code=400, detail="Invalid payment signature")
+
+    razorpay_payment = await _fetch_razorpay_payment(payload.payment_id)
+    if razorpay_payment.get("order_id") != payload.order_id:
+        raise HTTPException(status_code=400, detail="Payment does not belong to the supplied order")
+    if razorpay_payment.get("status") != "captured":
+        raise HTTPException(status_code=400, detail="Payment has not been captured")
+
     async with async_session() as session:
         payment = (await session.execute(select(Payment).where(Payment.order_id == payload.order_id, Payment.user_id == current_user.id))).scalar_one_or_none()
         if not payment:
             raise HTTPException(status_code=404, detail="Payment order not found")
+        expected_amount = payment.amount * 100
+        if razorpay_payment.get("amount") != expected_amount or razorpay_payment.get("currency") != payment.currency:
+            raise HTTPException(status_code=400, detail="Payment amount or currency does not match the tournament entry fee")
         payment.payment_id = payload.payment_id
         payment.status = "paid"
         await session.commit()
