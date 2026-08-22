@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import Header from './compoments/Header/Header';
 import NavBar from './compoments/NavBar/NavBar';
 import AppRoutes from './routes/AppRoutes';
@@ -7,7 +7,7 @@ import FloatingHelpIcon from './compoments/FloatingHelpIcon/FloatingHelpIcon';
 import HelpChat from './compoments/HelpChat/HelpChat';
 import { getStoredUser, isAuthenticated, loginAsAdmin, loginAsUser, logout, register } from './features/auth/auth.api';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = React.useState(false);
   const [showHelpChat, setShowHelpChat] = React.useState(false);
   const [mode, setMode] = React.useState<'login' | 'register'>('login');
@@ -19,13 +19,13 @@ const App: React.FC = () => {
   const [regPassword, setRegPassword] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [modalMessage, setModalMessage] = React.useState('');
-  const [sessionVersion, setSessionVersion] = React.useState(0);
-  void sessionVersion;
+  const navigate = useNavigate();
+  const location = useLocation();
   const loggedIn = isAuthenticated();
   const user = getStoredUser();
 
   const openLoginModal = () => { setMode('login'); setRole('user'); setModalMessage(''); setShowAuthModal(true); };
-  const closeModalAndGoHome = () => { setShowAuthModal(false); if (window.location.pathname !== '/') window.location.assign('/'); };
+  const closeModalAndGoHome = () => { setShowAuthModal(false); if (location.pathname !== '/') navigate('/'); };
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault(); setBusy(true); setModalMessage('');
@@ -33,7 +33,7 @@ const App: React.FC = () => {
     const result = await action({ email: loginEmail.trim(), password: loginPassword });
     setBusy(false);
     if (!result.success) { setModalMessage(result.message); return; }
-    setSessionVersion((x) => x + 1); setLoginPassword('');
+    setLoginPassword('');
     setModalMessage(`Login successful. Welcome ${role === 'admin' ? 'Admin' : 'Player'}!`);
     window.setTimeout(closeModalAndGoHome, 500);
   };
@@ -50,12 +50,12 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    setBusy(true); const result = await logout(); setBusy(false); setSessionVersion((x) => x + 1);
-    if (window.location.pathname.startsWith('/admin')) window.location.assign('/');
+    setBusy(true); const result = await logout(); setBusy(false);
+    if (location.pathname.startsWith('/admin')) navigate('/');
     if (!result.success) window.alert(result.message);
   };
 
-  return <BrowserRouter>
+  return <>
     <div className="app-wrapper"><Header user={user} loggedIn={loggedIn} onLoginClick={openLoginModal} onLogoutClick={handleLogout} busy={busy} /><NavBar user={user} /><main className="page-wrap"><AppRoutes /></main></div>
     {showAuthModal ? <div className="auth-modal-backdrop" role="presentation" onClick={() => setShowAuthModal(false)}>
       <section className="auth-modal panel page-enter" role="dialog" aria-modal="true" aria-label="Authentication" onClick={(e) => e.stopPropagation()}><div className="panel-inner">
@@ -69,7 +69,7 @@ const App: React.FC = () => {
             <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Password" required autoComplete="current-password" />
             <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Please wait...' : `Login as ${role}`}</button>
           </form>
-          <p><button type="button" className="btn btn-linklike" onClick={() => window.location.assign('/forgot-password')}>Forgot password?</button></p>
+          <p><button type="button" className="btn btn-linklike" onClick={() => navigate('/forgot-password')}>Forgot password?</button></p>
           <p>New here? <button type="button" className="btn btn-linklike" onClick={() => { setMode('register'); setModalMessage(''); }}>Create a player account</button></p>
         </> : <>
           <p className="section-label">Create player account</p><h2>Start competing in minutes</h2>
@@ -87,6 +87,8 @@ const App: React.FC = () => {
       </div></section>
     </div> : null}
     <FloatingHelpIcon onClick={() => setShowHelpChat(true)} /><HelpChat isOpen={showHelpChat} onClose={() => setShowHelpChat(false)} />
-  </BrowserRouter>;
+  </>;
 };
+
+const App: React.FC = () => <BrowserRouter><AppContent /></BrowserRouter>;
 export default App;
