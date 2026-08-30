@@ -1,11 +1,9 @@
-import base64
 import difflib
-import json
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
-from uuid import uuid4
+from typing import Dict, List, Optional, Set
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -25,12 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Store the backend-managed help document in memory.
 DOCUMENT_CONTEXT = ""
 CURRENT_DOCUMENT_FILE = None
 DOCUMENT_LAST_MODIFIED: Optional[float] = None
 CHAT_HISTORY: List[Dict[str, str]] = []
-HELP_DOCUMENT_PATH = Path(__file__).resolve().parent / "Help&Support.pdf"
+HELP_KNOWLEDGE_PATH = Path(__file__).resolve().parent / "Help&Support.md"
 STOP_WORDS = {
     "a", "an", "and", "are", "as", "at", "be", "by", "do", "for", "from",
     "how", "i", "in", "is", "it", "of", "on", "or", "that", "the", "this",
@@ -56,6 +53,8 @@ HUMAN_FALLBACK_ANSWER = "I couldn't find that in the help information."
 
 class ChatRequest(BaseModel):
     question: str
+    role: Optional[str] = None
+    user_id: Optional[int] = None
 
 
 class ChatResponse(BaseModel):
@@ -69,96 +68,197 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def extract_text_from_pdf(pdf_bytes: bytes) -> str:
-    """Extract text from PDF using Ollama with vision capability"""
-    # For simple text extraction, we'll use a basic approach
-    # In production, consider using PyPDF2 or similar
+def _ensure_backend_modules() -> None:
+    backend_dir = Path(__file__).resolve().parents[2] / "backend"
+    backend_str = str(backend_dir)
+    if backend_str not in sys.path:
+        sys.path.insert(0, backend_str)
+
+
+async def get_database_support_snapshot() -> str:
+    """Collect public-safe database facts for support answers."""
     try:
-        import PyPDF2
-        from io import BytesIO
-        
-        pdf_file = BytesIO(pdf_bytes)
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
-        page_texts = []
-        for page_number, page in enumerate(pdf_reader.pages, start=1):
-            text = (page.extract_text() or "").strip()
-            if text:
-                page_texts.append(f"[Page {page_number}]\n{text}")
-        return "\n\n".join(page_texts)
-    except ImportError:
-        # Fallback: use Ollama's vision capability to process PDF images
-        return "PDF extraction requires PyPDF2. Please install it."
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to extract PDF text: {str(e)}")
+        _ensure_backend_modules()
+        from sqlalchemy import func, select
+
+        from app.core.database import async_session
+        from app.models.announcement import Announcement
+        from app.models.match import Match
+        from app.models.team import Team
+        from app.models.tournament import Tournament
+        from app.models.user import User
+
+        async with async_session() as session:
+            tournament_count = await session.scalar(select(func.count()).select_from(Tournament)) or 0
+            team_count = await session.scalar(select(func.count()).select_from(Team)) or 0
+            match_count = await session.scalar(select(func.count()).select_from(Match)) or 0
+            user_count = await session.scalar(select(func.count()).select_from(User)) or 0
+            announcement_count = await session.scalar(select(func.count()).select_from(Announcement)) or 0
+
+            recent_tournaments = await session.execute(
+                select(Tournament.name, Tournament.status, Tournament.game)
+                .order_by(Tournament.id.desc())
+                .limit(5)
+            )
+            status_rows = recent_tournaments.all()
+
+            recent_matches = await session.execute(
+                select(Match.tournament_id, Match.team_a, Match.team_b, Match.status)
+                .order_by(Match.id.desc())
+                .limit(5)
+            )
+            match_rows = recent_matches.all()
+    except Exception:
+        return ""
+
+    tournament_lines = [
+        f"- {name} | status: {status} | game: {game}"
+        for name, status, game in status_rows
+    ] if status_rows else ["- no tournaments found"]
+
+    match_lines = [
+        f"- tournament {tournament_id}: {team_a} vs {team_b} | status: {status}"
+        for tournament_id, team_a, team_b, status in match_rows
+    ] if match_rows else ["- no recent match data"]
+
+    return (
+        "Public database snapshot:\n"
+        f"- total tournaments: {tournament_count}\n"
+        f"- total teams: {team_count}\n"
+        f"- total matches: {match_count}\n"
+        f"- total users: {user_count}\n"
+        f"- total announcements: {announcement_count}\n"
+        "- recent tournaments:\n" + "\n".join(tournament_lines) + "\n"
+        "- recent matches:\n" + "\n".join(match_lines) + "\n"
+        "Important: this snapshot contains only public product data and excludes passwords, security tokens, secrets, and private account records."
+    )
 
 
-def extract_text_from_word(doc_bytes: bytes) -> str:
-    """Extract text from Word document"""
+async def get_upcoming_tournaments_summary(limit: int = 5) -> str:
     try:
-        from docx import Document
-        from io import BytesIO
-        
-        doc = Document(BytesIO(doc_bytes))
-        text = "\n".join([para.text for para in doc.paragraphs])
-        return text
-    except ImportError:
-        return "DOCX extraction requires python-docx. Please install it."
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to extract Word text: {str(e)}")
+        _ensure_backend_modules()
+        from sqlalchemy import select
+
+        from app.core.database import async_session
+        from app.models.tournament import Tournament
+
+        async with async_session() as session:
+            rows = (
+                await session.execute(
+                    select(Tournament)
+                    .where(Tournament.status.in_(["upcoming", "registration_open"]))
+                    .order_by(Tournament.start_date.is_(None), Tournament.start_date.asc(), Tournament.created_at.desc())
+                    .limit(limit)
+                )
+            ).scalars().all()
+    except Exception:
+        return "I couldn't find any upcoming tournaments right now."
+
+    if not rows:
+        return "I couldn't find any upcoming tournaments right now."
+
+    names = ", ".join(f"{item.name} ({item.game})" for item in rows)
+    return f"I found {len(rows)} upcoming tournament(s): {names}."
 
 
-def extract_text_from_file(file_bytes: bytes, content_type: str) -> str:
-    """Extract text based on file type"""
-    if content_type == "application/pdf":
-        return extract_text_from_pdf(file_bytes)
-    elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                         "application/msword"]:
-        return extract_text_from_word(file_bytes)
-    elif content_type == "text/plain":
-        return file_bytes.decode("utf-8", errors="ignore")
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported file type. Use PDF, DOCX, or TXT."
-        )
+async def get_live_tournaments_summary(limit: int = 5) -> str:
+    try:
+        _ensure_backend_modules()
+        from sqlalchemy import select
+
+        from app.core.database import async_session
+        from app.models.tournament import Tournament
+
+        async with async_session() as session:
+            rows = (
+                await session.execute(
+                    select(Tournament)
+                    .where(Tournament.status == "live")
+                    .order_by(Tournament.start_date.is_(None), Tournament.start_date.asc(), Tournament.created_at.desc())
+                    .limit(limit)
+                )
+            ).scalars().all()
+    except Exception:
+        return "I couldn't find any live tournaments right now."
+
+    if not rows:
+        return "I couldn't find any live tournaments right now."
+
+    names = ", ".join(f"{item.name} ({item.game})" for item in rows)
+    return f"Right now, I found {len(rows)} live tournament(s): {names}."
+
+
+async def get_user_registration_summary(user_id: Optional[int]) -> str:
+    if user_id is None:
+        return "I can only check your registration count when you are logged in to the site."
+
+    try:
+        _ensure_backend_modules()
+        from sqlalchemy import func, select
+
+        from app.core.database import async_session
+        from app.models.tournament import Tournament
+        from app.models.tournament_registration import TournamentRegistration
+
+        async with async_session() as session:
+            count = await session.scalar(
+                select(func.count(TournamentRegistration.id)).where(TournamentRegistration.user_id == user_id)
+            ) or 0
+
+            rows = (
+                await session.execute(
+                    select(Tournament.name, Tournament.status)
+                    .join(TournamentRegistration, TournamentRegistration.tournament_id == Tournament.id)
+                    .where(TournamentRegistration.user_id == user_id)
+                    .order_by(TournamentRegistration.created_at.desc())
+                    .limit(10)
+                )
+            ).all()
+    except Exception:
+        return "I couldn't check your tournament registrations right now."
+
+    if count == 0:
+        return "You are not registered in any tournaments right now."
+
+    names = ", ".join(f"{name} ({status})" for name, status in rows)
+    return f"You are registered in {count} tournament(s): {names}."
 
 
 def ensure_help_document_loaded(force_reload: bool = False) -> None:
-    """Load the backend-managed help document when needed."""
+    """Load the website support knowledge base when needed."""
     global DOCUMENT_CONTEXT, CURRENT_DOCUMENT_FILE, DOCUMENT_LAST_MODIFIED, CHAT_HISTORY
 
-    if HELP_DOCUMENT_PATH.name != "Help&Support.pdf":
+    if HELP_KNOWLEDGE_PATH.name != "Help&Support.md":
         raise HTTPException(
             status_code=500,
-            detail="Help document name mismatch. Expected Help&Support.pdf.",
+            detail="Help knowledge file name mismatch. Expected Help&Support.md.",
         )
 
-    if not HELP_DOCUMENT_PATH.exists():
+    if not HELP_KNOWLEDGE_PATH.exists():
         DOCUMENT_CONTEXT = ""
         CURRENT_DOCUMENT_FILE = None
         DOCUMENT_LAST_MODIFIED = None
         CHAT_HISTORY = []
         return
 
-    modified_at = HELP_DOCUMENT_PATH.stat().st_mtime
+    modified_at = HELP_KNOWLEDGE_PATH.stat().st_mtime
     if (
         not force_reload
         and DOCUMENT_CONTEXT
-        and CURRENT_DOCUMENT_FILE == HELP_DOCUMENT_PATH.name
+        and CURRENT_DOCUMENT_FILE == HELP_KNOWLEDGE_PATH.name
         and DOCUMENT_LAST_MODIFIED == modified_at
     ):
         return
 
-    file_bytes = HELP_DOCUMENT_PATH.read_bytes()
-    file_size_mb = len(file_bytes) / (1024 * 1024)
+    file_size_mb = HELP_KNOWLEDGE_PATH.stat().st_size / (1024 * 1024)
     if file_size_mb > settings.max_image_size_mb:
         raise HTTPException(
             status_code=400,
-            detail=f"Help document is too large. Max allowed size is {settings.max_image_size_mb} MB.",
+            detail=f"Help knowledge file is too large. Max allowed size is {settings.max_image_size_mb} MB.",
         )
 
-    DOCUMENT_CONTEXT = extract_text_from_file(file_bytes, "application/pdf")
-    CURRENT_DOCUMENT_FILE = HELP_DOCUMENT_PATH.name
+    DOCUMENT_CONTEXT = HELP_KNOWLEDGE_PATH.read_text(encoding="utf-8")
+    CURRENT_DOCUMENT_FILE = HELP_KNOWLEDGE_PATH.name
     DOCUMENT_LAST_MODIFIED = modified_at
     CHAT_HISTORY = []
 
@@ -242,6 +342,54 @@ def is_goodbye(question: str) -> bool:
     cleaned = re.sub(r"[^a-z\s]", " ", question.lower()).strip()
     cleaned = re.sub(r"\s+", " ", cleaned)
     return bool(cleaned) and cleaned in BYE_WORDS
+
+
+def clean_markdown_response(text: str) -> str:
+    cleaned = text or ""
+    cleaned = re.sub(r"\*\*(.*?)\*\*", r"\1", cleaned)
+    cleaned = re.sub(r"\*(.*?)\*", r"\1", cleaned)
+    cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
+    cleaned = re.sub(r"^\s*[-*]\s+", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^\s*\d+\.\s*", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    cleaned = re.sub(r"\s+\n", "\n", cleaned)
+    return cleaned.strip()
+
+
+def is_admin_creation_question(question: str) -> bool:
+    cleaned = re.sub(r"[^a-z0-9\s]", " ", question.lower())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return False
+    create_words = {"create", "make", "new", "add", "start"}
+    tournament_words = {"tournament", "tournaments"}
+    tokens = set(cleaned.split())
+    if tournament_words.intersection(tokens) and create_words.intersection(tokens):
+        return True
+    return "create a tournament" in cleaned or "make a tournament" in cleaned or "new tournament" in cleaned
+
+
+def is_upcoming_or_live_question(question: str) -> bool:
+    cleaned = re.sub(r"[^a-z0-9\s]", " ", question.lower())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return False
+    return (
+        "tournament" in cleaned and (
+            "upcoming" in cleaned or "live" in cleaned or "happening now" in cleaned or "currently live" in cleaned or "this week" in cleaned
+        )
+    )
+
+
+def is_user_registration_count_question(question: str) -> bool:
+    cleaned = re.sub(r"[^a-z0-9\s]", " ", question.lower())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return False
+    tournament_match = "tournament" in cleaned or "tournaments" in cleaned or "match" in cleaned
+    count_match = "how many" in cleaned or "count" in cleaned or "many" in cleaned or "registered in" in cleaned
+    done_match = "registered" in cleaned or "register" in cleaned or "joined" in cleaned
+    return tournament_match and count_match and done_match
 
 
 def normalize_intent_terms(text: str) -> List[str]:
@@ -432,11 +580,17 @@ async def ask_question(req: ChatRequest):
     if not DOCUMENT_CONTEXT:
         raise HTTPException(
             status_code=400,
-            detail="Help document not found. Expected services/ai-helpchat/Help&Support.pdf.",
+            detail="Help knowledge file not found. Expected services/ai-helpchat/Help&Support.md.",
         )
 
     try:
         question = req.question.strip()
+        support_context = DOCUMENT_CONTEXT
+        if question:
+            database_snapshot = await get_database_support_snapshot()
+            if database_snapshot:
+                support_context = f"{DOCUMENT_CONTEXT}\n\n{database_snapshot}"
+
         if is_greeting(question):
             answer = "Hello! How can I help you today?"
             append_chat_history("user", question)
@@ -449,10 +603,10 @@ async def ask_question(req: ChatRequest):
             )
         if is_capability_question(question):
             answer = (
-                "I can answer questions, explain things clearly, give a short summary, "
-                "and help you understand the main points. You can ask about any topic here, "
-                "or say explain if you want more detail."
+                "I can answer questions about registration, tournaments, teams, match results, admin tasks, "
+                "and general site guidance. You can ask me about the platform in plain language."
             )
+            answer = clean_markdown_response(answer)
             append_chat_history("user", question)
             append_chat_history("assistant", answer)
             return ChatResponse(
@@ -462,7 +616,8 @@ async def ask_question(req: ChatRequest):
                 source_document=CURRENT_DOCUMENT_FILE,
             )
         if is_thanks(question):
-            answer = "You’re welcome. Ask me anything from the document whenever you’re ready."
+            answer = "You’re welcome. Ask me anything about the tournament site whenever you’re ready."
+            answer = clean_markdown_response(answer)
             append_chat_history("user", question)
             append_chat_history("assistant", answer)
             return ChatResponse(
@@ -472,7 +627,8 @@ async def ask_question(req: ChatRequest):
                 source_document=CURRENT_DOCUMENT_FILE,
             )
         if is_goodbye(question):
-            answer = "Goodbye. If you want to continue later, ask me another question from the document."
+            answer = "Goodbye. If you want to continue later, ask me another question about the site."
+            answer = clean_markdown_response(answer)
             append_chat_history("user", question)
             append_chat_history("assistant", answer)
             return ChatResponse(
@@ -482,8 +638,45 @@ async def ask_question(req: ChatRequest):
                 source_document=CURRENT_DOCUMENT_FILE,
             )
 
-        # Find relevant chunks
-        chunks = chunk_text(DOCUMENT_CONTEXT)
+        if is_admin_creation_question(question) and (req.role or "user").lower() != "admin":
+            answer = "Only admin users can create tournaments. If you are a regular user, you can join a tournament or create a team instead."
+            answer = clean_markdown_response(answer)
+            append_chat_history("user", question)
+            append_chat_history("assistant", answer)
+            return ChatResponse(
+                success=True,
+                answer=answer,
+                timestamp=utc_now_iso(),
+                source_document=CURRENT_DOCUMENT_FILE,
+            )
+
+        if is_upcoming_or_live_question(question):
+            upcoming = await get_upcoming_tournaments_summary()
+            live = await get_live_tournaments_summary()
+            answer = f"{upcoming} {live}"
+            answer = clean_markdown_response(answer)
+            append_chat_history("user", question)
+            append_chat_history("assistant", answer)
+            return ChatResponse(
+                success=True,
+                answer=answer,
+                timestamp=utc_now_iso(),
+                source_document=CURRENT_DOCUMENT_FILE,
+            )
+
+        if is_user_registration_count_question(question):
+            answer = await get_user_registration_summary(req.user_id)
+            answer = clean_markdown_response(answer)
+            append_chat_history("user", question)
+            append_chat_history("assistant", answer)
+            return ChatResponse(
+                success=True,
+                answer=answer,
+                timestamp=utc_now_iso(),
+                source_document=CURRENT_DOCUMENT_FILE,
+            )
+
+        chunks = chunk_text(support_context)
         if is_summary_request(question):
             relevant_context = build_document_overview(chunks)
             user_message = DOCUMENT_QA_USER_PROMPT_TEMPLATE.format(
@@ -491,7 +684,7 @@ async def ask_question(req: ChatRequest):
                 history=format_chat_history(),
                 question=(
                     f"{question}\n\n"
-                    "Give a short, user-friendly overview of the document's main topics."
+                    "Give a short, user-friendly overview of the main website support topics."
                 ),
             )
             answer = await query_ollama(DOCUMENT_QA_SYSTEM_PROMPT, user_message)
@@ -524,7 +717,6 @@ async def ask_question(req: ChatRequest):
             for index, chunk in enumerate(relevant_chunks, start=1)
         )
 
-        # Prepare prompt
         user_message = DOCUMENT_QA_USER_PROMPT_TEMPLATE.format(
             context=relevant_context,
             history=format_chat_history(),
@@ -533,6 +725,7 @@ async def ask_question(req: ChatRequest):
 
         # Get answer from Ollama
         answer = await query_ollama(DOCUMENT_QA_SYSTEM_PROMPT, user_message)
+        answer = clean_markdown_response(answer)
         append_chat_history("user", question)
         append_chat_history("assistant", answer)
 

@@ -196,7 +196,7 @@ Key endpoints:
 
 ## Optional Help Chatbot Service
 
-A document-based Q&A chatbot that answers questions strictly from uploaded documents (PDF, DOCX, TXT).
+A website support chatbot that answers questions from a markdown knowledge base and public-safe product data. It does not use the old PDF document and avoids exposing sensitive data.
 
 Run separately if needed:
 
@@ -208,12 +208,7 @@ Service default URL: `http://localhost:8002`
 
 ### Setup Steps:
 
-1. **Install dependencies:**
-   ```bash
-   pip install PyPDF2 python-docx
-   ```
-
-2. **Configure Ollama:** Ensure Ollama is running with a model that supports chat (e.g., deepseek-v3.1)
+1. **Configure Ollama:** Ensure Ollama is running with a model that supports chat (e.g., deepseek-v3.1)
 
 3. **Environment variables:** Set these in your `.env` file:
    ```
@@ -226,8 +221,9 @@ Service default URL: `http://localhost:8002`
 
 ### Key Features:
 
-- **Backend-Managed Help Document:** The chatbot reads `services/ai-helpchat/Help&Support.pdf`
-- **Strict Context:** Answers only from document content (default temperature: 0.05)
+- **Website Knowledge Base:** The chatbot reads `services/ai-helpchat/Help&Support.md`
+- **Safe Product Data:** It can use public-safe database summaries without exposing passwords, tokens, or private security details
+- **Strict Context:** Answers only from the help knowledge base and safe public data (default temperature: 0.05)
 - **Smart Matching:** Relevance-based chunk retrieval
 - **Floating UI:** Help icon in bottom-right corner with popup chat
 

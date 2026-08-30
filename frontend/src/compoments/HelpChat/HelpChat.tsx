@@ -23,6 +23,11 @@ interface AskResponse {
   detail?: string;
 }
 
+interface StoredUser {
+  id?: string | number;
+  role?: string;
+}
+
 export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -110,10 +115,18 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
     setLoading(true);
 
     try {
+      const storedUserRaw = localStorage.getItem('user');
+      const storedUser = storedUserRaw ? (JSON.parse(storedUserRaw) as StoredUser) : null;
+      const payload = {
+        question,
+        role: storedUser?.role ?? 'user',
+        user_id: storedUser?.id ? Number(storedUser.id) : null,
+      };
+
       const response = await fetch(`${VITE_HELP_CHATBOT_BASE_URL}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify(payload),
       });
 
       const data = (await response.json()) as AskResponse;
