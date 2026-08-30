@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     ocr_model: str = Field(default="qwen3-vl:235b-cloud")
     ollama_timeout_seconds: int = Field(default=180)
     help_chatbot_temperature: float = Field(default=0.05)
-    
+    help_chatbot_min_relevance: float = Field(default=0.08)
+
     # File and image settings
     max_image_size_mb: int = Field(default=10)
     data_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parent / "data")
@@ -25,7 +26,6 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Ensure data directory exists
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
 
