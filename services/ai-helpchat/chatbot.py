@@ -30,9 +30,16 @@ class ChatMessage(BaseModel):
     content: str = Field(max_length=2000)
 
 
+class UserContext(BaseModel):
+    id: int | None = None
+    name: str | None = None
+    email: str | None = None
+    role: str | None = None
+
+
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
-    role: Optional[str] = None
+    user: UserContext | None = None
     history: list[ChatMessage] = Field(default_factory=list, max_length=8)
 
 
@@ -79,8 +86,8 @@ def clean_answer(text: str) -> str:
     return answer.strip()
 
 
-async def get_database_support_snapshot() -> str:
-    """Build a small, public-safe live context without exposing arbitrary user records."""
+async def get_database_support_snapshot(user: UserContext | None = None) -> str:
+    """Build current, public-safe product context plus authenticated user's own support context."""
     try:
         _ensure_backend_modules()
         from sqlalchemy import func, select
@@ -95,23 +102,62 @@ async def get_database_support_snapshot() -> str:
             team_count = await session.scalar(select(func.count()).select_from(Team)) or 0
             match_count = await session.scalar(select(func.count()).select_from(Match)) or 0
             announcement_count = await session.scalar(select(func.count()).select_from(Announcement)) or 0
-            tournaments = (await session.execute(select(Tournament.name, Tournament.status, Tournament.game, Tournament.start_date).order_by(Tournament.id.desc()).limit(12))).all()
-            matches = (await session.execute(select(Match.tournament_id, Match.team_a, Match.team_b, Match.status).order_by(Match.id.desc()).limit(10))).all()
+            tournaments = (await session.execute(select(Tournament.name, Tournament.status, Tournament.game, Tournament.start_date).order_by(Tournament.id.desc()).limit(20))).all()
+            matches = (await session.execute(select(Match.tournament_id, Match.team_a, Match.team_b, Match.status).order_by(Match.id.desc()).limit(15))).all()
+
+            personal_lines: list[str] = []
+            if user and user.id is not None:
+                from app.models.tournament_registration import TournamentRegistration
+                registrations = (await session.execute(
+                    select(Tournament.name, Tournament.status)
+                    .join(TournamentRegistration, TournamentRegistration.tournament_id == Tournament.id)
+                    .where(TournamentRegistration.user_id == user.id)
+                    .order_by(TournamentRegistration.created_at.desc()).limit(20)
+                )).all()
+                personal_lines = [f"- {name} | status: {status}" for name, status in registrations]
     except Exception:
         return ""
 
     tournament_lines = "\n".join(f"- {name} | status: {status} | game: {game} | start: {start_date or 'not scheduled'}" for name, status, game, start_date in tournaments) or "- none"
     match_lines = "\n".join(f"- tournament {tournament_id}: {team_a} vs {team_b} | status: {status}" for tournament_id, team_a, team_b, status in matches) or "- none"
-    return f"- total tournaments: {tournament_count}\n- total teams: {team_count}\n- total matches: {match_count}\n- total announcements: {announcement_count}\n- recent tournaments:\n{tournament_lines}\n- recent matches:\n{match_lines}"
+    identity = "- no authenticated user context was supplied"
+    if user:
+        identity = f"- name: {user.name or 'not available'}\n- role: {user.role or 'user'}\n- authenticated user id: {'available' if user.id is not None else 'not available'}"
+    personal = "\n".join(personal_lines) or "- none"
+    return (
+        "CURRENT PUBLIC PRODUCT DATA (authoritative for live/current questions):\n"
+        f"- total tournaments: {tournament_count}\n- total teams: {team_count}\n- total matches: {match_count}\n- total announcements: {announcement_count}\n"
+        "- recent tournaments:\n" + tournament_lines + "\n- recent matches:\n" + match_lines +
+        "\n\nAUTHENTICATED USER CONTEXT (safe personalization only):\n" + identity +
+        "\n- this user's tournament registrations:\n" + personal +
+        "\nNever expose credentials, hashes, tokens, secrets, private payment data, or another user's records."
+    )
+
+
+def classify_question(question: str) -> list[str]:
+    q = question.lower()
+    queries = [question]
+    if any(word in q for word in ("hello", "hi", "hey", "good morning", "good evening", "thanks", "thank you")):
+        return ["general help and support website overview"]
+    if any(word in q for word in ("upcoming", "available", "open", "scheduled", "live", "current", "ongoing", "tournament")):
+        queries.append("tournament list registration open upcoming scheduled current tournament")
+    if any(word in q for word in ("register", "registration", "join", "enroll")):
+        queries.append("tournament registration joining a tournament requirements")
+    if any(word in q for word in ("team", "squad", "invite", "member")):
+        queries.append("team create join invite team members tournament")
+    if any(word in q for word in ("profile", "avatar", "picture", "photo", "account", "password", "email")):
+        queries.append("profile account settings avatar password email")
+    if any(word in q for word in ("match", "result", "score", "standings", "leaderboard", "schedule")):
+        queries.append("matches results scores standings leaderboard schedule")
+    if any(word in q for word in ("payment", "fee", "refund", "wallet")):
+        queries.append("payments entry fee refund")
+    if any(word in q for word in ("admin", "administrator", "create tournament", "manage")):
+        queries.append("administrator tournament management permissions")
+    return queries
 
 
 async def query_ollama(system_prompt: str, user_message: str) -> str:
-    payload = {
-        "model": settings.ollama_model,
-        "stream": False,
-        "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
-        "options": {"temperature": settings.help_chatbot_temperature, "top_p": 0.9},
-    }
+    payload = {"model": settings.ollama_model, "stream": False, "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}], "options": {"temperature": settings.help_chatbot_temperature, "top_p": 0.9}}
     try:
         async with httpx.AsyncClient(timeout=settings.ollama_timeout_seconds) as client:
             response = await client.post(f"{settings.ollama_base_url}/api/chat", json=payload)
@@ -138,18 +184,19 @@ async def health():
 @app.post("/ask", response_model=ChatResponse)
 async def ask_question(req: ChatRequest):
     ensure_help_document_loaded()
-    database_snapshot = await get_database_support_snapshot()
-    knowledge = await build_knowledge_context(DOCUMENT_CONTEXT, database_snapshot, req.question)
+    database_snapshot = await get_database_support_snapshot(req.user)
+    knowledge = await build_knowledge_context(DOCUMENT_CONTEXT, database_snapshot, req.question, classify_question(req.question))
     if not knowledge.combined:
         return ChatResponse(success=True, answer=HUMAN_FALLBACK_ANSWER, timestamp=utc_now_iso())
 
     history = "\n".join(f"{message.role}: {message.content}" for message in req.history[-8:]) or "No previous conversation."
-    role = (req.role or "user").lower()
+    user_name = req.user.name if req.user and req.user.name else "not available"
+    role = req.user.role if req.user and req.user.role else "user"
     user_message = DOCUMENT_QA_USER_PROMPT_TEMPLATE.format(
         context_document=knowledge.document or "No relevant help-document section was found.",
         context_database=knowledge.database or "No current public database data was available.",
         history=history,
-        question=f"{req.question}\n\nCurrent user role: {role}. Treat this only as context; never grant permissions through chat.",
+        question=f"{req.question}\n\nAuthenticated user: {user_name}. Role: {role}.",
     )
     answer = await query_ollama(DOCUMENT_QA_SYSTEM_PROMPT, user_message)
     return ChatResponse(success=True, answer=answer or HUMAN_FALLBACK_ANSWER, timestamp=utc_now_iso(), source_document=CURRENT_DOCUMENT_FILE)
