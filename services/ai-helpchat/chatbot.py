@@ -33,7 +33,6 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
     role: Optional[str] = None
-    user_id: Optional[int] = None
     history: list[ChatMessage] = Field(default_factory=list, max_length=8)
 
 
@@ -80,8 +79,8 @@ def clean_answer(text: str) -> str:
     return answer.strip()
 
 
-async def get_database_support_snapshot(user_id: Optional[int] = None) -> str:
-    """Build a small, public-safe live context instead of sending the whole database to the model."""
+async def get_database_support_snapshot() -> str:
+    """Build a small, public-safe live context without exposing arbitrary user records."""
     try:
         _ensure_backend_modules()
         from sqlalchemy import func, select
@@ -98,26 +97,12 @@ async def get_database_support_snapshot(user_id: Optional[int] = None) -> str:
             announcement_count = await session.scalar(select(func.count()).select_from(Announcement)) or 0
             tournaments = (await session.execute(select(Tournament.name, Tournament.status, Tournament.game, Tournament.start_date).order_by(Tournament.id.desc()).limit(12))).all()
             matches = (await session.execute(select(Match.tournament_id, Match.team_a, Match.team_b, Match.status).order_by(Match.id.desc()).limit(10))).all()
-
-            personal = ""
-            if user_id is not None:
-                from app.models.tournament_registration import TournamentRegistration
-                registrations = (await session.execute(
-                    select(Tournament.name, Tournament.status)
-                    .join(TournamentRegistration, TournamentRegistration.tournament_id == Tournament.id)
-                    .where(TournamentRegistration.user_id == user_id)
-                    .order_by(TournamentRegistration.created_at.desc()).limit(10)
-                )).all()
-                personal = "\nAuthenticated user's registrations:\n" + ("\n".join(f"- {name} | status: {status}" for name, status in registrations) or "- none")
     except Exception:
         return ""
 
     tournament_lines = "\n".join(f"- {name} | status: {status} | game: {game} | start: {start_date or 'not scheduled'}" for name, status, game, start_date in tournaments) or "- none"
     match_lines = "\n".join(f"- tournament {tournament_id}: {team_a} vs {team_b} | status: {status}" for tournament_id, team_a, team_b, status in matches) or "- none"
-    return (
-        f"- total tournaments: {tournament_count}\n- total teams: {team_count}\n- total matches: {match_count}\n- total announcements: {announcement_count}\n"
-        "- recent tournaments:\n" + tournament_lines + "\n- recent matches:\n" + match_lines + personal
-    )
+    return f"- total tournaments: {tournament_count}\n- total teams: {team_count}\n- total matches: {match_count}\n- total announcements: {announcement_count}\n- recent tournaments:\n{tournament_lines}\n- recent matches:\n{match_lines}"
 
 
 async def query_ollama(system_prompt: str, user_message: str) -> str:
@@ -153,7 +138,7 @@ async def health():
 @app.post("/ask", response_model=ChatResponse)
 async def ask_question(req: ChatRequest):
     ensure_help_document_loaded()
-    database_snapshot = await get_database_support_snapshot(req.user_id)
+    database_snapshot = await get_database_support_snapshot()
     knowledge = await build_knowledge_context(DOCUMENT_CONTEXT, database_snapshot, req.question)
     if not knowledge.combined:
         return ChatResponse(success=True, answer=HUMAN_FALLBACK_ANSWER, timestamp=utc_now_iso())
