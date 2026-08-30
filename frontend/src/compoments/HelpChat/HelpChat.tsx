@@ -16,6 +16,7 @@ interface HelpChatProps {
 
 interface HealthResponse {
   document_loaded?: boolean;
+  chat_available?: boolean;
 }
 
 interface AskResponse {
@@ -32,46 +33,43 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [documentLoaded, setDocumentLoaded] = useState(false);
+  const [chatAvailable, setChatAvailable] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const initializedRef = useRef(false);
 
   const addBotMessage = React.useCallback((content: string) => {
-    const message: Message = {
-      id: Date.now().toString(),
+    setMessages((prev) => [...prev, {
+      id: `${Date.now()}-${Math.random()}`,
       type: 'bot',
       content,
       timestamp: new Date().toLocaleTimeString(),
-    };
-    setMessages((prev) => [...prev, message]);
+    }]);
   }, []);
 
-  const checkDocumentStatus = React.useCallback(async () => {
+  const checkServiceStatus = React.useCallback(async () => {
     try {
       const response = await fetch(`${VITE_HELP_CHATBOT_BASE_URL}/health`);
+      if (!response.ok) throw new Error('Support service is unavailable');
       const data = (await response.json()) as HealthResponse;
-      const isLoaded = Boolean(data.document_loaded);
-      setDocumentLoaded(isLoaded);
-
-      setMessages((prev) => {
-        if (prev.length > 0) {
-          return prev;
-        }
-
-        return [
-          {
-            id: Date.now().toString(),
-            type: 'bot',
-            content: isLoaded
-              ? 'Welcome! How can I help you today?'
-              : 'Help information is not available right now. Please try again later.',
-            timestamp: new Date().toLocaleTimeString(),
-          },
-        ];
-      });
+      setChatAvailable(data.chat_available !== false);
+      setMessages((prev) => prev.length > 0 ? prev : [{
+        id: `${Date.now()}-${Math.random()}`,
+        type: 'bot',
+        content: data.chat_available !== false
+          ? 'Welcome! I can help with the website using the help guide and current public product information.'
+          : 'Help & Support is temporarily unavailable. Please try again later.',
+        timestamp: new Date().toLocaleTimeString(),
+      }]);
     } catch (error) {
-      console.error('Failed to check document status:', error);
+      console.error('Failed to check help chatbot status:', error);
+      setChatAvailable(false);
+      setMessages((prev) => prev.length > 0 ? prev : [{
+        id: `${Date.now()}-${Math.random()}`,
+        type: 'bot',
+        content: 'Help & Support is temporarily unavailable. Please try again later.',
+        timestamp: new Date().toLocaleTimeString(),
+      }]);
     }
   }, []);
 
@@ -80,72 +78,61 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
   }, [messages]);
 
   useEffect(() => {
-    if (!isOpen || loading || !documentLoaded) return;
-
-    const focusTimer = window.setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
-
+    if (!isOpen || loading || !chatAvailable) return;
+    const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(focusTimer);
-  }, [isOpen, loading, documentLoaded, messages.length]);
+  }, [isOpen, loading, chatAvailable, messages.length]);
 
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
-    void checkDocumentStatus();
-  }, [checkDocumentStatus]);
+    void checkServiceStatus();
+  }, [checkServiceStatus]);
 
   const handleSendMessage = async () => {
-    if (!input.trim()) return;
-
-    if (!documentLoaded) {
-      addBotMessage('Help information is not available right now. Please try again later.');
+    const question = input.trim();
+    if (!question || loading) return;
+    if (!chatAvailable) {
+      addBotMessage('Help & Support is temporarily unavailable. Please try again later.');
       return;
     }
 
-    const question = input.trim();
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random()}`,
       type: 'user',
       content: question,
       timestamp: new Date().toLocaleTimeString(),
     };
-    setMessages((prev) => [...prev, userMessage]);
+    const conversation = [...messages, userMessage];
+    setMessages(conversation);
     setInput('');
     setLoading(true);
 
     try {
       const storedUserRaw = localStorage.getItem('user');
       const storedUser = storedUserRaw ? (JSON.parse(storedUserRaw) as StoredUser) : null;
-      const payload = {
-        question,
-        role: storedUser?.role ?? 'user',
-        user_id: storedUser?.id ? Number(storedUser.id) : null,
-      };
-
       const response = await fetch(`${VITE_HELP_CHATBOT_BASE_URL}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          question,
+          role: storedUser?.role ?? 'user',
+          user_id: storedUser?.id ? Number(storedUser.id) : null,
+          history: conversation.slice(-8).map(({ type, content }) => ({ role: type, content })),
+        }),
       });
 
       const data = (await response.json()) as AskResponse;
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Failed to get answer');
-      }
-
-      addBotMessage(data.answer || 'No answer was returned.');
+      if (!response.ok) throw new Error(data.detail || 'Failed to get answer');
+      addBotMessage(data.answer || 'I could not generate an answer right now.');
     } catch (error) {
-      addBotMessage(
-        `Sorry, I encountered an error. ${error instanceof Error ? error.message : 'Please try again.'}`
-      );
+      addBotMessage(`Sorry, I encountered an error. ${error instanceof Error ? error.message : 'Please try again.'}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       void handleSendMessage();
@@ -159,18 +146,9 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
       <div className="help-chat-modal">
         <div className="help-chat-header">
           <h2>Help & Support</h2>
-          <button className="close-btn" onClick={onClose} aria-label="Close chat">
-            ×
-          </button>
+          <button className="close-btn" onClick={onClose} aria-label="Close chat">×</button>
         </div>
-
         <div className="help-chat-messages">
-          {messages.length === 0 && !documentLoaded ? (
-            <div className="welcome-message">
-              <p>Welcome to Help & Support!</p>
-              <p>Help information is not available right now.</p>
-            </div>
-          ) : null}
           {messages.map((msg) => (
             <div key={msg.id} className={`message message-${msg.type}`}>
               <div className="message-content">{msg.content}</div>
@@ -179,7 +157,6 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
           ))}
           <div ref={messagesEndRef} />
         </div>
-
         <div className="help-chat-footer">
           <div className="input-section">
             <input
@@ -187,15 +164,12 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder={documentLoaded ? 'Ask your question...' : 'Help document not available...'}
-              disabled={!documentLoaded || loading}
+              onKeyDown={handleKeyDown}
+              placeholder={chatAvailable ? 'Ask your question...' : 'Support service unavailable...'}
+              disabled={!chatAvailable || loading}
+              aria-label="Help and support question"
             />
-            <button
-              onClick={() => void handleSendMessage()}
-              disabled={!documentLoaded || loading || !input.trim()}
-              className="send-btn"
-            >
+            <button onClick={() => void handleSendMessage()} disabled={!chatAvailable || loading || !input.trim()} className="send-btn">
               {loading ? '...' : 'Send'}
             </button>
           </div>
