@@ -5,7 +5,7 @@ import './HelpChat.css';
 interface Message { id: string; type: 'user' | 'bot'; content: string; timestamp: string; }
 interface HelpChatProps { isOpen: boolean; onClose: () => void; }
 interface HealthResponse { chat_available?: boolean; }
-interface AskResponse { answer?: string; detail?: string; }
+interface AskResponse { answer?: string; detail?: unknown; }
 interface StoredUser { id?: string | number; name?: string; email?: string; role?: string; }
 
 export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
@@ -51,6 +51,19 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
     try { const raw = localStorage.getItem('user'); return raw ? (JSON.parse(raw) as StoredUser) : null; } catch { return null; }
   };
 
+  const formatApiError = (detail: unknown): string => {
+    if (typeof detail === 'string' && detail.trim()) return detail;
+    if (Array.isArray(detail)) {
+      const messages = detail.map((item) => typeof item === 'object' && item !== null ? String((item as { msg?: string; message?: string }).msg || (item as { message?: string }).message || '') : '').filter(Boolean);
+      if (messages.length) return messages.join('; ');
+    }
+    if (detail && typeof detail === 'object') {
+      const message = (detail as { message?: string }).message;
+      if (message) return message;
+    }
+    return 'The request could not be processed. Please try again.';
+  };
+
   const handleSendMessage = async () => {
     const question = input.trim();
     if (!question || loading) return;
@@ -69,7 +82,7 @@ export const HelpChat: React.FC<HelpChatProps> = ({ isOpen, onClose }) => {
         }),
       });
       const data = (await response.json()) as AskResponse;
-      if (!response.ok) throw new Error(data.detail || 'Failed to get answer');
+      if (!response.ok) throw new Error(formatApiError(data.detail));
       addBotMessage(data.answer || 'I could not generate an answer right now.');
     } catch (error) { addBotMessage(`Sorry, I encountered an error. ${error instanceof Error ? error.message : 'Please try again.'}`); }
     finally { setLoading(false); }
