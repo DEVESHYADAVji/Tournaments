@@ -24,11 +24,9 @@ DOCUMENT_LAST_MODIFIED: Optional[float] = None
 CURRENT_DOCUMENT_FILE: Optional[str] = None
 HUMAN_FALLBACK_ANSWER = "I couldn't find that in the help information or current public product data."
 
-
 class ChatMessage(BaseModel):
     role: str
     content: str = Field(max_length=2000)
-
 
 class UserContext(BaseModel):
     id: int | None = None
@@ -36,12 +34,10 @@ class UserContext(BaseModel):
     email: str | None = None
     role: str | None = None
 
-
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
     user: UserContext | None = None
     history: list[ChatMessage] = Field(default_factory=list, max_length=8)
-
 
 class ChatResponse(BaseModel):
     success: bool
@@ -49,10 +45,8 @@ class ChatResponse(BaseModel):
     timestamp: str
     source_document: Optional[str] = None
 
-
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-
 
 def _ensure_backend_modules() -> None:
     backend_dir = Path(__file__).resolve().parents[2] / "backend"
@@ -60,34 +54,26 @@ def _ensure_backend_modules() -> None:
     if backend_str not in sys.path:
         sys.path.insert(0, backend_str)
 
-
 def ensure_help_document_loaded() -> None:
     global DOCUMENT_CONTEXT, DOCUMENT_LAST_MODIFIED, CURRENT_DOCUMENT_FILE
     if not HELP_KNOWLEDGE_PATH.exists():
-        DOCUMENT_CONTEXT = ""
-        DOCUMENT_LAST_MODIFIED = None
-        CURRENT_DOCUMENT_FILE = None
-        return
+        DOCUMENT_CONTEXT = ""; DOCUMENT_LAST_MODIFIED = None; CURRENT_DOCUMENT_FILE = None; return
     modified_at = HELP_KNOWLEDGE_PATH.stat().st_mtime
-    if DOCUMENT_CONTEXT and DOCUMENT_LAST_MODIFIED == modified_at:
-        return
+    if DOCUMENT_CONTEXT and DOCUMENT_LAST_MODIFIED == modified_at: return
     if HELP_KNOWLEDGE_PATH.stat().st_size / (1024 * 1024) > settings.max_image_size_mb:
         raise HTTPException(status_code=400, detail="Help knowledge file is too large.")
     DOCUMENT_CONTEXT = HELP_KNOWLEDGE_PATH.read_text(encoding="utf-8")
     DOCUMENT_LAST_MODIFIED = modified_at
     CURRENT_DOCUMENT_FILE = HELP_KNOWLEDGE_PATH.name
 
-
 def clean_answer(text: str) -> str:
     answer = (text or "").strip()
     answer = re.sub(r"\*\*(.*?)\*\*", r"\1", answer)
     answer = re.sub(r"`([^`]+)`", r"\1", answer)
-    answer = re.sub(r"\n{3,}", "\n\n", answer)
-    return answer.strip()
-
+    return re.sub(r"\n{3,}", "\n\n", answer).strip()
 
 async def get_database_support_snapshot(user: UserContext | None = None) -> str:
-    """Build current, public-safe product context plus authenticated user's own support context."""
+    """Build current public data and only the authenticated user's own support data."""
     try:
         _ensure_backend_modules()
         from sqlalchemy import func, select
@@ -96,7 +82,6 @@ async def get_database_support_snapshot(user: UserContext | None = None) -> str:
         from app.models.match import Match
         from app.models.team import Team
         from app.models.tournament import Tournament
-
         async with async_session() as session:
             tournament_count = await session.scalar(select(func.count()).select_from(Tournament)) or 0
             team_count = await session.scalar(select(func.count()).select_from(Team)) or 0
@@ -104,103 +89,63 @@ async def get_database_support_snapshot(user: UserContext | None = None) -> str:
             announcement_count = await session.scalar(select(func.count()).select_from(Announcement)) or 0
             tournaments = (await session.execute(select(Tournament.name, Tournament.status, Tournament.game, Tournament.start_date).order_by(Tournament.id.desc()).limit(20))).all()
             matches = (await session.execute(select(Match.tournament_id, Match.team_a, Match.team_b, Match.status).order_by(Match.id.desc()).limit(15))).all()
-
-            personal_lines: list[str] = []
+            registrations = []
             if user and user.id is not None:
                 from app.models.tournament_registration import TournamentRegistration
-                registrations = (await session.execute(
-                    select(Tournament.name, Tournament.status)
-                    .join(TournamentRegistration, TournamentRegistration.tournament_id == Tournament.id)
-                    .where(TournamentRegistration.user_id == user.id)
-                    .order_by(TournamentRegistration.created_at.desc()).limit(20)
-                )).all()
-                personal_lines = [f"- {name} | status: {status}" for name, status in registrations]
+                registrations = (await session.execute(select(Tournament.name, Tournament.status).join(TournamentRegistration, TournamentRegistration.tournament_id == Tournament.id).where(TournamentRegistration.user_id == user.id).order_by(TournamentRegistration.created_at.desc()).limit(20))).all()
     except Exception:
         return ""
-
     tournament_lines = "\n".join(f"- {name} | status: {status} | game: {game} | start: {start_date or 'not scheduled'}" for name, status, game, start_date in tournaments) or "- none"
     match_lines = "\n".join(f"- tournament {tournament_id}: {team_a} vs {team_b} | status: {status}" for tournament_id, team_a, team_b, status in matches) or "- none"
+    registration_lines = "\n".join(f"- {name} | status: {status}" for name, status in registrations) or "- none"
     identity = "- no authenticated user context was supplied"
-    if user:
-        identity = f"- name: {user.name or 'not available'}\n- role: {user.role or 'user'}\n- authenticated user id: {'available' if user.id is not None else 'not available'}"
-    personal = "\n".join(personal_lines) or "- none"
-    return (
-        "CURRENT PUBLIC PRODUCT DATA (authoritative for live/current questions):\n"
-        f"- total tournaments: {tournament_count}\n- total teams: {team_count}\n- total matches: {match_count}\n- total announcements: {announcement_count}\n"
-        "- recent tournaments:\n" + tournament_lines + "\n- recent matches:\n" + match_lines +
-        "\n\nAUTHENTICATED USER CONTEXT (safe personalization only):\n" + identity +
-        "\n- this user's tournament registrations:\n" + personal +
-        "\nNever expose credentials, hashes, tokens, secrets, private payment data, or another user's records."
-    )
-
+    if user: identity = f"- name: {user.name or 'not available'}\n- email: {user.email or 'not available'}\n- role: {user.role or 'user'}\n- authenticated user id: {'available' if user.id is not None else 'not available'}"
+    return ("CURRENT PUBLIC PRODUCT DATA (authoritative for live/current questions):\n" +
+            f"- total tournaments: {tournament_count}\n- total teams: {team_count}\n- total matches: {match_count}\n- total announcements: {announcement_count}\n" +
+            "- recent tournaments:\n" + tournament_lines + "\n- recent matches:\n" + match_lines +
+            "\n\nAUTHENTICATED USER CONTEXT (safe personalization only):\n" + identity +
+            "\n- this user's tournament registrations:\n" + registration_lines +
+            "\nNever expose credentials, hashes, tokens, secrets, private payment data, or another user's records.")
 
 def classify_question(question: str) -> list[str]:
-    q = question.lower()
-    queries = [question]
-    if any(word in q for word in ("hello", "hi", "hey", "good morning", "good evening", "thanks", "thank you")):
-        return ["general help and support website overview"]
-    if any(word in q for word in ("upcoming", "available", "open", "scheduled", "live", "current", "ongoing", "tournament")):
-        queries.append("tournament list registration open upcoming scheduled current tournament")
-    if any(word in q for word in ("register", "registration", "join", "enroll")):
-        queries.append("tournament registration joining a tournament requirements")
-    if any(word in q for word in ("team", "squad", "invite", "member")):
-        queries.append("team create join invite team members tournament")
-    if any(word in q for word in ("profile", "avatar", "picture", "photo", "account", "password", "email")):
-        queries.append("profile account settings avatar password email")
-    if any(word in q for word in ("match", "result", "score", "standings", "leaderboard", "schedule")):
-        queries.append("matches results scores standings leaderboard schedule")
-    if any(word in q for word in ("payment", "fee", "refund", "wallet")):
-        queries.append("payments entry fee refund")
-    if any(word in q for word in ("admin", "administrator", "create tournament", "manage")):
-        queries.append("administrator tournament management permissions")
+    q = question.lower(); queries = [question]
+    if any(w in q for w in ("hello", "hi", "hey", "good morning", "good evening", "thanks", "thank you")): return ["general help and support website overview"]
+    if any(w in q for w in ("upcoming", "available", "open", "scheduled", "live", "current", "ongoing", "tournament")): queries.append("tournament list registration open upcoming scheduled current tournament")
+    if any(w in q for w in ("register", "registration", "join", "enroll")): queries.append("tournament registration joining a tournament requirements")
+    if any(w in q for w in ("team", "squad", "invite", "member")): queries.append("team create join invite team members tournament")
+    if any(w in q for w in ("profile", "avatar", "picture", "photo", "account", "password", "email")): queries.append("profile account settings avatar password email")
+    if any(w in q for w in ("match", "result", "score", "standings", "leaderboard", "schedule")): queries.append("matches results scores standings leaderboard schedule")
+    if any(w in q for w in ("payment", "fee", "refund", "wallet")): queries.append("payments entry fee refund")
+    if any(w in q for w in ("admin", "administrator", "create tournament", "manage")): queries.append("administrator tournament management permissions")
     return queries
-
 
 async def query_ollama(system_prompt: str, user_message: str) -> str:
     payload = {"model": settings.ollama_model, "stream": False, "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}], "options": {"temperature": settings.help_chatbot_temperature, "top_p": 0.9}}
     try:
-        async with httpx.AsyncClient(timeout=settings.ollama_timeout_seconds) as client:
-            response = await client.post(f"{settings.ollama_base_url}/api/chat", json=payload)
-        if response.status_code >= 400:
-            raise HTTPException(status_code=502, detail="The support AI service is temporarily unavailable.")
-        data = response.json()
-        return clean_answer(data.get("message", {}).get("content") or data.get("response") or "")
-    except httpx.HTTPError:
-        raise HTTPException(status_code=502, detail="Failed to connect to the support AI service.")
-
+        async with httpx.AsyncClient(timeout=settings.ollama_timeout_seconds) as client: response = await client.post(f"{settings.ollama_base_url}/api/chat", json=payload)
+        if response.status_code >= 400: raise HTTPException(status_code=502, detail="The support AI service is temporarily unavailable.")
+        data = response.json(); return clean_answer(data.get("message", {}).get("content") or data.get("response") or "")
+    except httpx.HTTPError: raise HTTPException(status_code=502, detail="Failed to connect to the support AI service.")
 
 @app.get("/")
-async def root():
-    ensure_help_document_loaded()
-    return {"service": "help-chatbot", "status": "ok"}
-
+async def root(): ensure_help_document_loaded(); return {"service": "help-chatbot", "status": "ok"}
 
 @app.get("/health")
 async def health():
-    ensure_help_document_loaded()
-    return {"status": "ok", "time": utc_now_iso(), "model": settings.ollama_model, "document_loaded": bool(DOCUMENT_CONTEXT), "current_document": CURRENT_DOCUMENT_FILE, "chat_available": True}
-
+    ensure_help_document_loaded(); return {"status": "ok", "time": utc_now_iso(), "model": settings.ollama_model, "document_loaded": bool(DOCUMENT_CONTEXT), "current_document": CURRENT_DOCUMENT_FILE, "chat_available": True}
 
 @app.post("/ask", response_model=ChatResponse)
 async def ask_question(req: ChatRequest):
     ensure_help_document_loaded()
     database_snapshot = await get_database_support_snapshot(req.user)
     knowledge = await build_knowledge_context(DOCUMENT_CONTEXT, database_snapshot, req.question, classify_question(req.question))
-    if not knowledge.combined:
-        return ChatResponse(success=True, answer=HUMAN_FALLBACK_ANSWER, timestamp=utc_now_iso())
-
+    if not knowledge.combined: return ChatResponse(success=True, answer=HUMAN_FALLBACK_ANSWER, timestamp=utc_now_iso())
     history = "\n".join(f"{message.role}: {message.content}" for message in req.history[-8:]) or "No previous conversation."
-    user_name = req.user.name if req.user and req.user.name else "not available"
-    role = req.user.role if req.user and req.user.role else "user"
-    user_message = DOCUMENT_QA_USER_PROMPT_TEMPLATE.format(
-        context_document=knowledge.document or "No relevant help-document section was found.",
-        context_database=knowledge.database or "No current public database data was available.",
-        history=history,
-        question=f"{req.question}\n\nAuthenticated user: {user_name}. Role: {role}.",
-    )
+    user = req.user
+    user_context = f"name: {user.name or 'not available'}\nemail: {user.email or 'not available'}\nrole: {user.role or 'user'}" if user else "No authenticated user was supplied."
+    user_message = DOCUMENT_QA_USER_PROMPT_TEMPLATE.format(context_document=knowledge.document or "No relevant help-document section was found.", context_database=knowledge.database or "No current public database data was available.", history=history, user_context=user_context, question=req.question)
     answer = await query_ollama(DOCUMENT_QA_SYSTEM_PROMPT, user_message)
     return ChatResponse(success=True, answer=answer or HUMAN_FALLBACK_ANSWER, timestamp=utc_now_iso(), source_document=CURRENT_DOCUMENT_FILE)
-
 
 if __name__ == "__main__":
     import uvicorn
