@@ -25,7 +25,15 @@ const AppContent: React.FC = () => {
   const user = getStoredUser();
 
   const openLoginModal = () => { setMode('login'); setRole('user'); setModalMessage(''); setShowAuthModal(true); };
-  const closeModalAndGoHome = () => { setShowAuthModal(false); if (location.pathname !== '/') navigate('/'); };
+  const closeAuthModal = React.useCallback(() => setShowAuthModal(false), []);
+  const closeModalAndGoHome = () => { closeAuthModal(); if (location.pathname !== '/') navigate('/'); };
+
+  React.useEffect(() => {
+    if (!showAuthModal) return;
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') closeAuthModal(); };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showAuthModal, closeAuthModal]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault(); setBusy(true); setModalMessage('');
@@ -33,8 +41,7 @@ const AppContent: React.FC = () => {
     const result = await action({ email: loginEmail.trim(), password: loginPassword });
     setBusy(false);
     if (!result.success) { setModalMessage(result.message); return; }
-    setLoginPassword('');
-    setModalMessage(`Login successful. Welcome ${role === 'admin' ? 'Admin' : 'Player'}!`);
+    setLoginPassword(''); setModalMessage(`Login successful. Welcome ${role === 'admin' ? 'Admin' : 'Player'}!`);
     window.setTimeout(closeModalAndGoHome, 500);
   };
 
@@ -52,39 +59,41 @@ const AppContent: React.FC = () => {
   const handleLogout = async () => {
     setBusy(true); const result = await logout(); setBusy(false);
     if (location.pathname.startsWith('/admin')) navigate('/');
-    if (!result.success) window.alert(result.message);
+    if (!result.success) setModalMessage(result.message);
   };
 
   return <>
     <div className="app-wrapper"><Header user={user} loggedIn={loggedIn} onLoginClick={openLoginModal} onLogoutClick={handleLogout} busy={busy} /><NavBar user={user} /><main className="page-wrap"><AppRoutes /></main></div>
-    {showAuthModal ? <div className="auth-modal-backdrop" role="presentation" onClick={() => setShowAuthModal(false)}>
-      <section className="auth-modal panel page-enter" role="dialog" aria-modal="true" aria-label="Authentication" onClick={(e) => e.stopPropagation()}><div className="panel-inner">
-        {mode === 'login' ? <>
-          <p className="section-label">Welcome back</p><h2>{role === 'admin' ? 'Admin control room' : 'Enter your match lobby'}</h2>
-          <p>{role === 'admin' ? 'Admin access is restricted to approved administrator accounts.' : 'Sign in to join tournaments, manage your teams, and track your competitive history.'}</p>
-          {modalMessage ? <p className="message-text" role="status">{modalMessage}</p> : null}
-          <form className="form-stack" onSubmit={handleLogin}>
-            <div className="auth-switch"><button type="button" className={`btn ${role === 'user' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setRole('user'); setModalMessage(''); }}>Player</button><button type="button" className={`btn ${role === 'admin' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setRole('admin'); setModalMessage(''); }}>Admin</button></div>
-            <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="Email" required autoComplete="email" />
-            <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Password" required autoComplete="current-password" />
-            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Please wait...' : `Login as ${role}`}</button>
-          </form>
-          <p><button type="button" className="btn btn-linklike" onClick={() => navigate('/forgot-password')}>Forgot password?</button></p>
-          <p>New here? <button type="button" className="btn btn-linklike" onClick={() => { setMode('register'); setModalMessage(''); }}>Create a player account</button></p>
-        </> : <>
-          <p className="section-label">Create player account</p><h2>Start competing in minutes</h2>
-          <p>Registration creates a standard player account. Administrator accounts are provisioned separately and cannot be created from this form.</p>
-          {modalMessage ? <p className="message-text" role="status">{modalMessage}</p> : null}
-          <form className="form-stack" onSubmit={handleRegister}>
-            <input value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Full name" required autoComplete="name" />
-            <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="Email" required autoComplete="email" />
-            <input type="password" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="Password (min 8 chars)" minLength={8} required autoComplete="new-password" />
-            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Please wait...' : 'Register as player'}</button>
-          </form>
-          <p>Already have an account? <button type="button" className="btn btn-linklike" onClick={() => { setMode('login'); setModalMessage(''); }}>Sign in</button></p>
-        </>}
-        <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={() => setShowAuthModal(false)}>Close</button></div>
-      </div></section>
+    {showAuthModal ? <div className="auth-modal-backdrop" role="presentation" onClick={closeAuthModal}>
+      <section className="auth-modal panel page-enter" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" onClick={(e) => e.stopPropagation()}>
+        <div className="panel-inner">
+          {mode === 'login' ? <>
+            <p className="section-label">Welcome back</p><h2 id="auth-modal-title">{role === 'admin' ? 'Admin control room' : 'Enter your match lobby'}</h2>
+            <p>{role === 'admin' ? 'Admin access is restricted to approved administrator accounts.' : 'Sign in to join tournaments, manage your teams, and track your competitive history.'}</p>
+            {modalMessage ? <p className="message-text" role="status">{modalMessage}</p> : null}
+            <form className="form-stack" onSubmit={handleLogin}>
+              <div className="auth-switch"><button type="button" className={`btn ${role === 'user' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setRole('user'); setModalMessage(''); }}>Player</button><button type="button" className={`btn ${role === 'admin' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setRole('admin'); setModalMessage(''); }}>Admin</button></div>
+              <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="Email" required autoComplete="email" autoFocus />
+              <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Password" required autoComplete="current-password" />
+              <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Please wait...' : `Login as ${role}`}</button>
+            </form>
+            <p><button type="button" className="btn btn-linklike" onClick={() => navigate('/forgot-password')}>Forgot password?</button></p>
+            <p>New here? <button type="button" className="btn btn-linklike" onClick={() => { setMode('register'); setModalMessage(''); }}>Create a player account</button></p>
+          </> : <>
+            <p className="section-label">Create player account</p><h2 id="auth-modal-title">Start competing in minutes</h2>
+            <p>Registration creates a standard player account. Administrator accounts are provisioned separately and cannot be created from this form.</p>
+            {modalMessage ? <p className="message-text" role="status">{modalMessage}</p> : null}
+            <form className="form-stack" onSubmit={handleRegister}>
+              <input value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Full name" required autoComplete="name" autoFocus />
+              <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="Email" required autoComplete="email" />
+              <input type="password" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="Password (min 8 chars)" minLength={8} required autoComplete="new-password" />
+              <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Please wait...' : 'Register as player'}</button>
+            </form>
+            <p>Already have an account? <button type="button" className="btn btn-linklike" onClick={() => { setMode('login'); setModalMessage(''); }}>Sign in</button></p>
+          </>}
+          <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={closeAuthModal}>Close</button></div>
+        </div>
+      </section>
     </div> : null}
     <FloatingHelpIcon onClick={() => setShowHelpChat(true)} /><HelpChat isOpen={showHelpChat} onClose={() => setShowHelpChat(false)} />
   </>;
