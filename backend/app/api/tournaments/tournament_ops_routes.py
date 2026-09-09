@@ -36,9 +36,7 @@ class BracketSlotOut(BaseModel):
 
 async def _get_tournament(tournament_id: int) -> Tournament:
     async with async_session() as session:
-        tournament = (
-            await session.execute(select(Tournament).where(Tournament.id == tournament_id))
-        ).scalar_one_or_none()
+        tournament = (await session.execute(select(Tournament).where(Tournament.id == tournament_id))).scalar_one_or_none()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
     return tournament
@@ -54,63 +52,28 @@ async def check_in(tournament_id: int, current_user: PlayerUser):
         raise HTTPException(status_code=400, detail="Check-in opens 24 hours before the tournament")
 
     async with async_session() as session:
-        registration = (
-            await session.execute(
-                select(TournamentRegistration).where(
-                    TournamentRegistration.tournament_id == tournament_id,
-                    TournamentRegistration.user_id == current_user.id,
-                )
-            )
-        ).scalar_one_or_none()
+        registration = (await session.execute(select(TournamentRegistration).where(TournamentRegistration.tournament_id == tournament_id, TournamentRegistration.user_id == current_user.id))).scalar_one_or_none()
         if not registration:
             raise HTTPException(status_code=404, detail="You are not registered for this tournament")
         registration.status = "checked_in"
         await session.commit()
         await session.refresh(registration)
 
-    return CheckInOut(
-        registration_id=registration.id,
-        tournament_id=tournament_id,
-        team_name=registration.team_name,
-        status=registration.status,
-        checked_in_at=now,
-    )
+    return CheckInOut(registration_id=registration.id, tournament_id=tournament_id, team_name=registration.team_name, status=registration.status, checked_in_at=now)
 
 
 @router.get("/{tournament_id}/bracket", response_model=list[BracketSlotOut])
-async def get_bracket(tournament_id: int, _: AdminUser):
+async def get_bracket(tournament_id: int, _: PlayerUser):
     tournament = await _get_tournament(tournament_id)
     async with async_session() as session:
-        registrations = (
-            await session.execute(
-                select(TournamentRegistration)
-                .where(
-                    TournamentRegistration.tournament_id == tournament_id,
-                    TournamentRegistration.status == "checked_in",
-                )
-                .order_by(TournamentRegistration.created_at.asc())
-            )
-        ).scalars().all()
+        registrations = (await session.execute(select(TournamentRegistration).where(TournamentRegistration.tournament_id == tournament_id, TournamentRegistration.status == "checked_in").order_by(TournamentRegistration.created_at.asc()))).scalars().all()
 
     if len(registrations) < 2:
         raise HTTPException(status_code=400, detail="At least two checked-in participants are required")
 
     try:
-        slots: list[MatchSlot] = generate_bracket(
-            tournament.format,
-            [registration.team_name for registration in registrations],
-        )
+        slots: list[MatchSlot] = generate_bracket(tournament.format, [registration.team_name for registration in registrations])
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return [
-        BracketSlotOut(
-            round_name=slot.round_name,
-            match_number=slot.match_number,
-            team_a=slot.team_a,
-            team_b=slot.team_b,
-            bracket=slot.bracket,
-            bye=bool((slot.team_a is None) ^ (slot.team_b is None)),
-        )
-        for slot in slots
-    ]
+    return [BracketSlotOut(round_name=slot.round_name, match_number=slot.match_number, team_a=slot.team_a, team_b=slot.team_b, bracket=slot.bracket, bye=bool((slot.team_a is None) ^ (slot.team_b is None))) for slot in slots]
