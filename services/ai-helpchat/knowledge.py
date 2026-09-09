@@ -37,6 +37,10 @@ def chunk_text(text: str, chunk_size: int = 1400) -> list[str]:
     current: list[str] = []
     size = 0
     for paragraph in paragraphs:
+        if current and re.match(r"^#{1,6}\s", paragraph):
+            chunks.append("\n\n".join(current))
+            current = []
+            size = 0
         next_size = size + len(paragraph) + (2 if current else 0)
         if current and next_size > chunk_size:
             chunks.append("\n\n".join(current))
