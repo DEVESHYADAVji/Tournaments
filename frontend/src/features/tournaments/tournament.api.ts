@@ -100,6 +100,14 @@ export interface MyRegistration {
   start_date?: string | null;
 }
 
+export interface CheckInResponse {
+  registration_id: number;
+  tournament_id: number;
+  team_name: string;
+  status: string;
+  checked_in_at: string;
+}
+
 export const getAllTournaments = async (): Promise<Tournament[]> => {
   const response = await httpClient.get('/tournaments');
   if (!Array.isArray(response.data)) {
@@ -108,18 +116,13 @@ export const getAllTournaments = async (): Promise<Tournament[]> => {
   return response.data as Tournament[];
 };
 
-export const getTournamentById = async (id: number | string): Promise<Tournament | null> => {
+export const getTournamentById = async (id: number | string): Promise<Tournament> => {
   const numericId = Number(id);
-  if (!Number.isFinite(numericId)) {
-    return null;
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    throw new Error('Invalid tournament id');
   }
-  try {
-    const response = await httpClient.get(`/tournaments/${numericId}`);
-    return response.data as Tournament;
-  } catch (error) {
-    console.error(`getTournamentById(${numericId}) failed`, error);
-    return null;
-  }
+  const response = await httpClient.get(`/tournaments/${numericId}`);
+  return response.data as Tournament;
 };
 
 export const createTournament = async (payload: TournamentCreateInput): Promise<Tournament> => {
@@ -135,6 +138,11 @@ export const joinTournament = async (
     team_name: teamName || undefined,
   });
   return response.data;
+};
+
+export const checkInTournament = async (tournamentId: number | string): Promise<CheckInResponse> => {
+  const response = await httpClient.post(`/tournaments/${Number(tournamentId)}/check-in`);
+  return response.data as CheckInResponse;
 };
 
 export const getTournamentMatches = async (tournamentId: number | string): Promise<Match[]> => {
@@ -160,6 +168,16 @@ export const updateMatchResult = async (
     payload
   );
   return response.data as Match;
+};
+
+export const advanceMatchWinner = async (
+  tournamentId: number | string,
+  matchId: number | string
+): Promise<Record<string, unknown>> => {
+  const response = await httpClient.post(
+    `/tournaments/${Number(tournamentId)}/matches/${Number(matchId)}/advance`
+  );
+  return response.data as Record<string, unknown>;
 };
 
 export const getTournamentStandings = async (tournamentId: number | string): Promise<StandingRow[]> => {

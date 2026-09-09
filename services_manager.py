@@ -180,7 +180,7 @@ class ServiceManager:
         print("\n[*] Configuration:")
         print("  [+] Environment: .env file")
         print("  [+] Database: MySQL on port 3306")
-        print("  [+] Ollama: http://localhost:11434")
+        print("  [+] AI: Ollama Cloud via OpenAI-compatible API")
         
         print("\n[!] Press Ctrl+C to stop all services\n")
     

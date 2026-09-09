@@ -22,10 +22,11 @@ class Settings(BaseSettings):
     SEED_ADMIN_PASSWORD: Optional[str] = None
     SEED_USER_EMAIL: Optional[str] = None
     SEED_USER_PASSWORD: Optional[str] = None
-    AI_CHATBOT_OLLAMA_BASE_URL: str = "http://localhost:11434"
-    AI_CHATBOT_OLLAMA_MODEL: str = "deepseek-v3.1:671b-cloud"
+    API_KEY: Optional[str] = None
+    AI_API_BASE_URL: str = "https://ollama.com/v1"
+    AI_MODEL: str = "gpt-oss:120b"
     AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS: int = 45
-    AI_CHATBOT_OCR_MODEL: str = "qwen3-vl:235b-cloud"
+    AI_CHATBOT_OCR_MODEL: str = "gemma4:31b-cloud"
     RAZORPAY_KEY_ID: Optional[str] = None
     RAZORPAY_KEY_SECRET: Optional[str] = None
     RAZORPAY_WEBHOOK_SECRET: Optional[str] = None

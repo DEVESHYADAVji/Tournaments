@@ -81,9 +81,10 @@ PORT=8000
 DEBUG=true
 SQLALCHEMY_DATABASE_URI=mysql+asyncmy://root:password@127.0.0.1:3306/tournaments
 SECRET_KEY=change-this-in-real-environments
-AI_CHATBOT_OLLAMA_BASE_URL=http://localhost:11434
-AI_CHATBOT_OLLAMA_MODEL=deepseek-v3.1:671b-cloud
-AI_CHATBOT_OCR_MODEL=qwen3-vl:235b-cloud
+API_KEY=your-ollama-api-key
+AI_API_BASE_URL=https://ollama.com/v1
+AI_MODEL=gpt-oss:120b
+AI_CHATBOT_OCR_MODEL=gemma4:31b-cloud
 AI_CHATBOT_HELP_CHATBOT_TEMPERATURE=0.05
 ```
 
@@ -196,29 +197,25 @@ Key endpoints:
 
 ## Optional Help Chatbot Service
 
-A document-based Q&A chatbot that answers questions strictly from uploaded documents (PDF, DOCX, TXT).
+A website support chatbot that answers questions from a markdown knowledge base and public-safe product data. It does not use the old PDF document and avoids exposing sensitive data.
 
 Run separately if needed:
 
 ```bash
-python services/ai-helpchat/chatbot.py
+python -m uvicorn "services.ai-helpchat.chatbot:app" --host 0.0.0.0 --port 8002 --reload
 ```
 
 Service default URL: `http://localhost:8002`
 
 ### Setup Steps:
 
-1. **Install dependencies:**
-   ```bash
-   pip install PyPDF2 python-docx
-   ```
-
-2. **Configure Ollama:** Ensure Ollama is running with a model that supports chat (e.g., deepseek-v3.1)
+1. **Configure Ollama Cloud:** Create an Ollama API key and set `API_KEY` in the root `.env` file. The app uses Ollama's OpenAI-compatible API.
 
 3. **Environment variables:** Set these in your `.env` file:
    ```
-   AI_CHATBOT_OLLAMA_BASE_URL=http://localhost:11434
-   AI_CHATBOT_OLLAMA_MODEL=deepseek-v3.1:671b-cloud
+   API_KEY=your-ollama-api-key
+   AI_API_BASE_URL=https://ollama.com/v1
+   AI_MODEL=gpt-oss:120b
    AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS=180
    AI_CHATBOT_HELP_CHATBOT_TEMPERATURE=0.05
    VITE_HELP_CHATBOT_BASE_URL=http://localhost:8002
@@ -226,8 +223,9 @@ Service default URL: `http://localhost:8002`
 
 ### Key Features:
 
-- **Backend-Managed Help Document:** The chatbot reads `services/ai-helpchat/Help&Support.pdf`
-- **Strict Context:** Answers only from document content (default temperature: 0.05)
+- **Website Knowledge Base:** The chatbot reads `services/ai-helpchat/Help&Support.md`
+- **Safe Product Data:** It can use public-safe database summaries without exposing passwords, tokens, or private security details
+- **Strict Context:** Answers only from the help knowledge base and safe public data (default temperature: 0.05)
 - **Smart Matching:** Relevance-based chunk retrieval
 - **Floating UI:** Help icon in bottom-right corner with popup chat
 
@@ -253,7 +251,5 @@ The help chatbot is integrated into the frontend as a floating help icon. Users 
 
 ## OCR Troubleshooting
 
-- OCR needs a vision-capable Ollama model.
-- `deepseek-v3.1:671b-cloud` is not vision-capable, so it can return unrelated fabricated text for image OCR.
-- Set `AI_CHATBOT_OCR_MODEL` to a vision model (example: `qwen3-vl:235b-cloud`) and pull it:
-  - `ollama pull qwen3-vl:235b-cloud`
+- OCR needs a vision-capable Ollama Cloud model.
+- Set `AI_CHATBOT_OCR_MODEL` to a vision model such as `gemma4:31b-cloud`.

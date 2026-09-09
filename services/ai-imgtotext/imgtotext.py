@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-import httpx
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel
 
 from .prompts import OCR_SYSTEM_PROMPT, OCR_USER_PROMPT
@@ -56,59 +56,28 @@ def persist_ocr_result(payload: Dict[str, Any]) -> Path:
 
 async def run_ollama_ocr(image_bytes: bytes) -> str:
     encoded_image = base64.b64encode(image_bytes).decode("utf-8")
-    ocr_model = settings.ocr_model or settings.ollama_model
-    request_payload = {
-        "model": ocr_model,
-        "stream": False,
-        "messages": [
-            {"role": "system", "content": OCR_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": OCR_USER_PROMPT,
-                "images": [encoded_image],
-            },
-        ],
-        "options": {
-            "temperature": 0,
-        },
-    }
-
-    async with httpx.AsyncClient(timeout=settings.ollama_timeout_seconds) as client:
-        show_response = await client.post(
-            f"{settings.ollama_base_url}/api/show",
-            json={"model": ocr_model},
+    if not settings.api_key:
+        raise HTTPException(status_code=502, detail="API_KEY is not configured")
+    client = AsyncOpenAI(api_key=settings.api_key, base_url=settings.ai_api_base_url.rstrip("/"), timeout=settings.ollama_timeout_seconds)
+    ocr_model = settings.ocr_model
+    try:
+        response = await client.chat.completions.create(
+            model=ocr_model,
+            messages=[
+                {"role": "system", "content": OCR_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": OCR_USER_PROMPT},
+                        {"type": "image_url", "image_url": {"url": f"data:image/*;base64,{encoded_image}"}},
+                    ],
+                },
+            ],
+            temperature=0,
         )
-        if show_response.status_code >= 400:
-            raise HTTPException(
-                status_code=502,
-                detail=f"Ollama model lookup failed ({show_response.status_code}): {show_response.text}",
-            )
-        show_payload = show_response.json()
-        capabilities = show_payload.get("capabilities") or []
-        if "vision" not in capabilities:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"OCR model '{ocr_model}' is not vision-capable. "
-                    "Set AI_CHATBOT_OCR_MODEL to a vision model."
-                ),
-            )
-        response = await client.post(f"{settings.ollama_base_url}/api/chat", json=request_payload)
-
-    if response.status_code >= 400:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Ollama request failed ({response.status_code}): {response.text}",
-        )
-
-    data = response.json()
-    content = (
-        data.get("message", {}).get("content")
-        or data.get("response")
-        or ""
-    )
-
-    return content.strip()
+    except (OpenAIError, IndexError) as exc:
+        raise HTTPException(status_code=502, detail="Failed to connect to the AI service") from exc
+    return (response.choices[0].message.content or "").strip()
 
 
 @app.get("/", tags=["root"])
@@ -121,9 +90,9 @@ async def health():
     return {
         "status": "ok",
         "time": utc_now_iso(),
-        "model": settings.ollama_model,
+        "model": settings.ai_model,
         "ocr_model": settings.ocr_model,
-        "ollama_base_url": settings.ollama_base_url,
+        "ai_api_base_url": settings.ai_api_base_url,
     }
 
 
@@ -133,21 +102,16 @@ async def chat_endpoint(req: ChatRequest):
     ts = utc_now_iso()
     messages = [{"role": "user", "content": req.message}]
 
-    async with httpx.AsyncClient(timeout=settings.ollama_timeout_seconds) as client:
-        response = await client.post(
-            f"{settings.ollama_base_url}/api/chat",
-            json={
-                "model": settings.ollama_model,
-                "stream": False,
-                "messages": messages,
-            },
+    if not settings.api_key:
+        raise HTTPException(status_code=502, detail="API_KEY is not configured")
+    try:
+        response = await AsyncOpenAI(api_key=settings.api_key, base_url=settings.ai_api_base_url.rstrip("/"), timeout=settings.ollama_timeout_seconds).chat.completions.create(
+            model=settings.ai_model,
+            messages=messages,
         )
-
-    if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"Ollama request failed: {response.text}")
-
-    data = response.json()
-    reply = data.get("message", {}).get("content") or data.get("response") or ""
+        reply = response.choices[0].message.content or ""
+    except (OpenAIError, IndexError) as exc:
+        raise HTTPException(status_code=502, detail="Failed to connect to the AI service") from exc
     return ChatResponse(success=True, reply=reply.strip(), timestamp=ts)
 
 
@@ -175,7 +139,7 @@ async def extract_text_from_image(file: UploadFile = File(...)):
     record = {
         "id": uuid4().hex,
         "timestamp": ts,
-        "model": settings.ollama_model,
+        "model": settings.ai_model,
         "ocr_model": settings.ocr_model,
         "filename": file.filename,
         "content_type": file.content_type,
