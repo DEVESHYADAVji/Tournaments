@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, Field
 
 from .knowledge import build_knowledge_context
@@ -143,19 +143,26 @@ def direct_answer(question: str, user: UserContext | None, database_snapshot: st
     return None
 
 async def query_ollama(system_prompt: str, user_message: str) -> str:
-    payload = {"model": settings.ollama_model, "stream": False, "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}], "options": {"temperature": settings.help_chatbot_temperature, "top_p": 0.9}}
     try:
-        async with httpx.AsyncClient(timeout=settings.ollama_timeout_seconds) as client: response = await client.post(f"{settings.ollama_base_url}/api/chat", json=payload)
-        if response.status_code >= 400: raise HTTPException(status_code=502, detail="The support AI service is temporarily unavailable.")
-        data = response.json(); return clean_answer(data.get("message", {}).get("content") or data.get("response") or "")
-    except httpx.HTTPError: raise HTTPException(status_code=502, detail="Failed to connect to the support AI service.")
+        if not settings.api_key:
+            raise RuntimeError("API_KEY is not configured")
+        client = AsyncOpenAI(api_key=settings.api_key, base_url=settings.ai_api_base_url.rstrip("/"), timeout=settings.ollama_timeout_seconds)
+        response = await client.chat.completions.create(
+            model=settings.ai_model,
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
+            temperature=settings.help_chatbot_temperature,
+            top_p=0.9,
+        )
+        return clean_answer(response.choices[0].message.content or "")
+    except (OpenAIError, RuntimeError, IndexError) as exc:
+        raise HTTPException(status_code=502, detail="Failed to connect to the support AI service.") from exc
 
 @app.get("/")
 async def root(): ensure_help_document_loaded(); return {"service": "help-chatbot", "status": "ok"}
 
 @app.get("/health")
 async def health():
-    ensure_help_document_loaded(); return {"status": "ok", "time": utc_now_iso(), "model": settings.ollama_model, "document_loaded": bool(DOCUMENT_CONTEXT), "current_document": CURRENT_DOCUMENT_FILE, "chat_available": True}
+    ensure_help_document_loaded(); return {"status": "ok", "time": utc_now_iso(), "model": settings.ai_model, "document_loaded": bool(DOCUMENT_CONTEXT), "current_document": CURRENT_DOCUMENT_FILE, "chat_available": bool(settings.api_key)}
 
 @app.post("/ask", response_model=ChatResponse)
 async def ask_question(req: ChatRequest):

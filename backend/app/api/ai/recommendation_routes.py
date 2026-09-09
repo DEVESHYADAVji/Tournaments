@@ -1,12 +1,13 @@
-import httpx
 import json
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
+from openai import OpenAIError
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.ai_client import get_ai_client
 from app.core.database import async_session
 from app.core.security import require_user
 from app.models.auth_user import AuthUser
@@ -67,14 +68,13 @@ async def recommendations(payload: RecommendationRequest, current_user: CurrentU
         "\nDATA:\n" + json.dumps(context) + ("\nREQUEST:\n" + payload.instruction if payload.instruction else "")
     )
     try:
-        async with httpx.AsyncClient(timeout=settings.AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS) as client:
-            response = await client.post(
-                f"{settings.AI_CHATBOT_OLLAMA_BASE_URL.rstrip('/')}/api/generate",
-                json={"model": settings.AI_CHATBOT_OLLAMA_MODEL, "prompt": prompt, "stream": False},
-            )
-            response.raise_for_status()
-            result = response.json().get("response")
-    except (httpx.HTTPError, ValueError) as exc:
+        response = await get_ai_client().chat.completions.create(
+            model=settings.AI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        result = response.choices[0].message.content
+    except (OpenAIError, RuntimeError, IndexError) as exc:
         raise HTTPException(status_code=503, detail="AI recommendations are temporarily unavailable") from exc
 
     if not isinstance(result, str) or not result.strip():

@@ -6,13 +6,14 @@ from datetime import datetime, timezone
 from typing import Annotated, Literal, Optional
 from urllib.parse import urlencode
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from openai import OpenAIError
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 
 from app.core.config import settings
+from app.core.ai_client import get_ai_client
 from app.core.database import async_session
 from app.core.security import create_access_token, require_admin, require_user
 from app.models.auth_user import AuthUser
@@ -142,11 +143,13 @@ async def _context(tournament_id: int):
 
 async def _ai(prompt: str) -> str:
     try:
-        async with httpx.AsyncClient(timeout=settings.AI_CHATBOT_OLLAMA_TIMEOUT_SECONDS) as client:
-            response = await client.post(f"{settings.AI_CHATBOT_OLLAMA_BASE_URL.rstrip('/')}/api/generate", json={"model": settings.AI_CHATBOT_OLLAMA_MODEL, "prompt": prompt, "stream": False})
-            response.raise_for_status()
-            result = response.json().get("response")
-    except (httpx.HTTPError, ValueError) as exc:
+        response = await get_ai_client().chat.completions.create(
+            model=settings.AI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        result = response.choices[0].message.content
+    except (OpenAIError, RuntimeError, IndexError) as exc:
         raise HTTPException(status_code=503, detail="AI provider is unavailable") from exc
     if not isinstance(result, str) or not result.strip():
         raise HTTPException(status_code=502, detail="AI provider returned an empty response")
@@ -196,4 +199,4 @@ async def update_moderation_report(report_id: int, payload: ModerationStatusIn, 
 
 @router.get("/health")
 async def integration_health(_: CurrentUser):
-    return {"oauth_google": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET), "oauth_facebook": bool(settings.FACEBOOK_APP_ID and settings.FACEBOOK_APP_SECRET), "discord": bool(settings.DISCORD_BOT_TOKEN and settings.DISCORD_CHANNEL_ID), "stream": bool(settings.STREAM_PROVIDER and settings.STREAM_CHANNEL), "ai": bool(settings.AI_CHATBOT_OLLAMA_BASE_URL and settings.AI_CHATBOT_OLLAMA_MODEL), "checked_at": datetime.now(timezone.utc).isoformat()}
+    return {"oauth_google": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET), "oauth_facebook": bool(settings.FACEBOOK_APP_ID and settings.FACEBOOK_APP_SECRET), "discord": bool(settings.DISCORD_BOT_TOKEN and settings.DISCORD_CHANNEL_ID), "stream": bool(settings.STREAM_PROVIDER and settings.STREAM_CHANNEL), "ai": bool(settings.API_KEY and settings.AI_MODEL), "checked_at": datetime.now(timezone.utc).isoformat()}

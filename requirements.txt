@@ -9,6 +9,7 @@ asyncmy==0.2.11
 aiosqlite==0.20.0
 python-dotenv==1.0.1
 httpx==0.28.1
+openai==1.68.2
 python-multipart==0.0.20
 PyPDF2==3.0.1
 python-docx==0.8.11

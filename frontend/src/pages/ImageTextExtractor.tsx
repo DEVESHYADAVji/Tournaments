@@ -47,7 +47,7 @@ const ImageTextExtractor: React.FC = () => {
         <div className="hero-inner">
           <p className="section-label">AI OCR</p>
           <h1 className="page-title">Image text extractor</h1>
-          <p>Upload an image and let your local Ollama vision model extract the visible text with minimal friction.</p>
+          <p>Upload an image and let the configured vision model extract the visible text with minimal friction.</p>
 
           <div className="cta-row">
             <button type="button" className="btn btn-secondary" onClick={handlePickImage}>
